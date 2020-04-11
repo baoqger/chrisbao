@@ -1,5 +1,5 @@
 ---
-title: Hello World
+title: algo-part1
 ---
 The Coding Interview Bootcamp: Data structure and algorithm.
 
