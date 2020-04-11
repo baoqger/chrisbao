@@ -7,15 +7,15 @@ The Coding Interview Bootcamp: Data structure and algorithm.
 
 ### String Reverse
 
-``` bash
+``` javascript
 function reverse(str) {
   return str.split('').reduce((rev, char) => char + rev, '');
 }
 ```
 
-### Paldinromes
+### Paldinromes 
 
-``` bash
+``` javascript
 function palindrome(str) {
   return str.split('').every((char, i) => {
     return char === str[str.length - i - 1];
@@ -24,7 +24,7 @@ function palindrome(str) {
 ```
 another way is based on recursive method:
 
-```
+``` javascript
 function palindromeRecursive(str) {
   if (str.length <= 1) {
     return true;
@@ -40,7 +40,7 @@ function palindromeRecursive(str) {
 
 ### Longest Paldinromes substring
 
-``` bash
+``` javascript
 function longestPalin(str) {
   str = treatStr(str);
   console.log(str)
@@ -84,7 +84,7 @@ function treatStr(str) {
 
 ### Integer Reversal
 
-``` bash
+``` javascript
 // --- Directions
 // Given an integer, return an integer that is the reverse
 // ordering of numbers.
@@ -110,7 +110,7 @@ function reverseInt(n) {
 
 method1
 
-```
+``` javascript
 function anagrams(stringA, stringB) {
   const aCharMap = buildCharMap(stringA);
   const bCharMap = buildCharMap(stringB);
@@ -141,7 +141,7 @@ function buildCharMap(str) {
 
 method2
 
-```
+``` javascript
 function anagrams(stringA, stringB) {
   return cleanString(stringA) === cleanString(stringB);
 }
@@ -178,7 +178,7 @@ The effect we need is as following:
 
 solution based on recursive methods
 
-```
+``` javascript
 function steps(n, row = 0, stair = '') {
   if (n === row) {
     return;
@@ -214,7 +214,7 @@ The requirement goes as following:
 ```
 
 solution: 
-```
+``` javascript
 function matrix(n) {
   const results = [];
 
@@ -265,7 +265,7 @@ function matrix(n) {
 
 solution based on **memoization** and **recursive**.
 
-```
+``` javascript
 function memoize(fn) {
   const cache = {};
   return function(...args) {
@@ -293,7 +293,7 @@ const fib = memoize(slowFib);
 
 The most simplified method goes as following:
 
-```
+``` javascript
 function memoize(fn) {
   const cache = {};
   return function(n) {
@@ -310,7 +310,7 @@ function memoize(fn) {
 
 Make it more abstract like below:
 
-```
+``` javascript
 function memoize(fn) {
   const cache = {};
   return function(...args) {
@@ -327,7 +327,7 @@ function memoize(fn) {
 ```
 ### Queue and Stack
 
-```
+``` javascript
 class Queue {
   constructor() {
     this.data = [];
@@ -359,13 +359,13 @@ class Stack {
     return this.data[this.data.length - 1];
   }
 }
-```
+``` 
 
 ### Two Become One 
 
 Implement a Queue data structure using two stacks
 
-```
+``` javascript
 const Stack = require('./stack');
 
 class Queue {
@@ -410,7 +410,7 @@ class Queue {
 
 ### Linked List
 
-```
+``` javascript
 class Node {
   constructor(data, next = null) {
     this.data = data;
@@ -569,7 +569,7 @@ class LinkedList {
 
 ### Find the midpoint of linked list
 
-```
+``` javascript
 --- Directions
 Return the 'middle' node of a linked list.
 If the list has an even number of elements, return
@@ -599,7 +599,7 @@ function midpoint(list) {
 
 ### Multiply two Big numbers 
 
-```
+``` javascript
 function addbyStr(str1, str2) {
   let len = Math.max(str1.length, str2.length);
   let increase = 0;
