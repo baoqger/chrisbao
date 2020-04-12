@@ -1,14 +1,12 @@
 ---
-title: rxjs-marble-testing
+title:  A very typical usage case of Marble Testing for RxJS
 date: 2020-04-12 20:08:45
 tags:
 ---
 
-## A very typical usage case of Marble Testing for RxJS
-
 ### What's Marble Testing
 
-RxJS is a powerful tool to handle various asynchronous tasks. Sometime RxJS observables are hard to test. In the community, there is a kind of particle unit test solution for RxJS observables called marble testing.
+RxJS is a powerful tool to handle various asynchronous tasks. Sometime RxJS observables are hard to test. In the community, there is one particular unit testing solution for RxJS observables called marble testing.
 
 For marble testing, you can refer to [these articles](https://medium.com/@bencabanes/marble-testing-observable-introduction-1f5ad39231c). They all do an excellent job of introducing what it is. 
 
@@ -17,7 +15,7 @@ For marble testing, you can refer to [these articles](https://medium.com/@bencab
 
 Recently in my development work, I came across a case where I used marble testing properly to solve the issue. 
 
-The background is in the root `index.html` file, there is one third-party javascript library/SDK. For some business reasons, after the third-party library is loaded, we bind some value to the global `window` object. 
+The background is for my application in the root `index.html` file, there is one third-party javascript library/SDK. For some business reasons, after the third-party library is loaded, we bind some value to the global `window` object. 
 
 ``` javascript
       window.onSecretLibraryLoad = (res) => {
@@ -40,15 +38,15 @@ export class UIComponent implements OnInit {
 
     public getSecretLibraryLoadStatus(): Observable<boolean> {
         return timer(0, 500).pipe(
-        map((t) => ({
-            currentTimeTick: t,
-            isReady: Boolean((window as any).SecretLibrary)
-        })),
-        takeWhile(
-            (val) => !val.isReady && val.currentTimeTick <= 30000/500,
-            true
-        ),
-        pluck("isReady")
+            map((t) => ({
+                currentTimeTick: t,
+                isReady: Boolean((window as any).SecretLibrary)
+            })),
+            takeWhile(
+                (val) => !val.isReady && val.currentTimeTick <= 30000/500,
+                true
+            ),
+            pluck("isReady")
         );
     }
 }
