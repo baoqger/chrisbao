@@ -1,5 +1,5 @@
 ---
-title:  A very typical usage case of Marble Testing for RxJS
+title:  Typical usage case of Marble Testing for RxJS
 date: 2020-04-12 20:08:45
 tags:
 ---
@@ -105,6 +105,29 @@ describe("UIComponent", () => {
 });
 
 ```
+
+Let me emphasize several key points to understand the above testing case. `getSecretLibraryLoadStatus` will repeatedly check the status of `window.SecretLibrary` every 500 milliseconds and return a boolean value stream. 
+
+I manually set the `window.SecretLibrary` value after 2 seconds by calling this: 
+
+``` javascript
+      timer(2 * 1000).subscribe(() => {
+        (window as any).SecretLibrary = "SecretLibrary";
+      });
+```
+
+So Let's imagine what the result should be: the first four emit value will be `false`,  and the last value is `true`. That's the expected observable. 
+
+But please notice that `scheduler.run`, everything run inside the callback will use virtual time. So we didn't wait 2 seconds for the `timer` operator. Instead, it runs synchronously. 
+
+The second point needs to notice is the syntax of the marble string `a 499ms b 499ms c 499ms d 499ms (e|)`. Yes, it looks a little wired, but be careful that's the correct way to represent marble. **The alphanumeric values represent an actual emitted value, which advances time one virtual frame**.
+
+Here I only show the case where the third-party script load successfully. Of course, to have full testing coverage, we need to consider the negative case where the script failed to load. You can figure it out. 
+
+### Summary
+
+In this post, I didn't go into the detailed syntax of marble testing. I think the reader can find the related document easily. I record a real usage case in the development where marble testing can show its power to handle async observables. 
+
 
 
 
