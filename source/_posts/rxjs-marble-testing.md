@@ -57,6 +57,57 @@ The interesting part comes from the `getSecretLibraryLoadStatus` function. It ut
 RxJS operator is not this article's topic, so I will not dig deep into it. Just add one comment for the `takeWhile` part, which seems a little hard to understand at the first look. It defines two conditions to stop the observable: first case is the `window.SecretLibrary` value is not undefined, which means the script is loaded; the second case is it reaches the maximum time limit (30 seconds). 
 
 
+### How to test it: marble testing
+
+Traditionally we use `subscribe and assert` pattern to test RxJS observables. But for the case, as mentioned above: time-based observables, the traditional solution can't handle it well. We can't wait 30 seconds when we run the unit tests during local development or in CI pipeline. That's unacceptable.
+
+Marble testing can fix this issue correctly by the concept of virtual time. For what is virtual time, you can refer to [these great articles](https://medium.com/angular-in-depth/how-to-test-observables-a00038c7faad). I will not discuss it at a detailed level in this post. Simply speaking, virtual time empowers us to test asynchronous RxJS observable synchronously. In virtual time asynchronous functions like `setTimeout` and `setInterval` will use fake time instead of actual time. And the magic comes from the `TestScheduler` of RxJS. 
+
+The marble testing solution as following: 
+
+``` javascript
+describe("UIComponent", () => {
+  let component: UIComponent;
+  let fixture: ComponentFixture<UIComponent>;
+  let scheduler: TestScheduler;
+
+  beforeEach(async(() => {
+    TestBed.configureTestingModule({
+      declarations: [UIComponent],
+    }).compileComponents();
+  }));
+
+  beforeEach(() => {
+    fixture = TestBed.createComponent(UIComponent);
+    component = fixture.componentInstance;
+    scheduler = new TestScheduler((actual, expected) => expect(actual).toEqual(expected));
+    (window as any).SecretLibrary = undefined;
+  });
+
+  it("getSecretLibraryLoadStatus method should return a boolean observable stream, for script load success case", () => {
+    scheduler.run(({ expectObservable }) => {
+      timer(2 * 1000).subscribe(() => {
+        (window as any).SecretLibrary = "SecretLibrary";
+      });
+      // tricky point about marble test: a, b, c these placeholders account 1 frame of virtual time
+      expectObservable(component.getSecretLibraryLoadStatus()).toBe(
+        "a 499ms b 499ms c 499ms d 499ms (e|)",
+        {
+          a: false,
+          b: false,
+          c: false,
+          d: false,
+          e: true
+        }
+      );
+    });
+  });
+});
+
+```
+
+
+
 
 
 
