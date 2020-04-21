@@ -32,8 +32,122 @@ Memoization is a great optimization solution of pure function. Generally speakin
 
 `memoizedSelector` is just an ordinary selector function with memoization optimization. Next let's see how it works in the design of NgRx library.
 
-### usage of memoizedSelector
-
 ### source code of memoizedSelector 
 
+``` typescript 
+export type AnyFn = (...args: any[]) => any;
+
+export type ComparatorFn = (a: any, b: any) => boolean;
+
+export type MemoizedProjection = {
+    memoized: AnyFn;
+    reset: () => void;
+    setResult: (result?: any) => void;
+};
+
+export function isEqualCheck(a: any, b: any): boolean {
+    return a === b;
+};
+
+function isArgumentsChanged(
+    args: IArguments,
+    lastArguments:IArguments,
+    comparator: ComparatorFn
+) {
+    for (let i = 0; i < args.length ; i++) {
+        if (!comparator(args[i], lastArguments[i])) {
+            return true;
+        }
+    }
+    return false;
+}
+
+export function defaultMemoize(
+    projectionFn: AnyFn,
+    isArgumentsEuqal = isEqualCheck,
+    isResultEqual = isEqualCheck
+): MemoizedProjection {
+    let lastArguments: null | IArguments = null;
+    let lastResult: any = null;
+    let overrideResult: any;
+
+    function reset() {
+        lastArguments = null;
+        lastResult = null;
+    }
+
+    function setResult(result: any = undefined) {
+        overrideResult = result;
+    }
+
+    function memoized(): any {
+        if (overrideResult !== undefined) {
+            return overrideResult;
+        } 
+        if (!lastArguments) {
+            lastResult = projectionFn.apply(null, arguments as any);
+            lastArguments = arguments;
+            return lastResult;
+        }
+
+        if (!isArgumentsChanged(arguments, lastArguments, isArgumentsEuqal)) {
+            return lastResult;
+        }
+
+        const newResult = projectionFn.apply(null, arguments as any);
+        lastArguments = arguments;
+
+        if (isResultEqual(lastResult, newResult)) {
+            return lastResult;
+        }
+
+        lastResult = newResult;
+        return newResult;
+    }
+    return { memoized, reset, setResult};
+}
+```
+
 ### explore the memoizedSelector method
+
+``` typescript 
+export function slowFunction(val: number): number {
+    const pre = new Date();
+    while (true) {
+        const now = new Date();
+        if (now.valueOf() - pre.valueOf() > 2000) {
+            break;
+        }
+    }
+    return val;
+}
+```
+
+
+``` typescript 
+import { defaultMemoize } from "./memoizedSelector";
+import { slowFunction } from "./slowFunction";
+
+// run slowFunction without memoization
+console.log("First call of slowFunction(2)");
+let pre = new Date();
+slowFunction(2);
+console.log(`It takes ${((new Date()).valueOf() - pre.valueOf())/1000} seconds  \n`);
+console.log("Second call of slowFunction(2)");
+pre = new Date();
+slowFunction(2);
+console.log(`It takes ${((new Date()).valueOf() - pre.valueOf())/1000} seconds \n`);
+
+// run slowFunction with memoization
+
+const fastFunction = defaultMemoize(slowFunction);
+console.log("First call of fastFunction(2)");
+pre = new Date();
+fastFunction.memoized(2);
+console.log(`It takes ${((new Date()).valueOf() - pre.valueOf())/1000} seconds \n`);
+console.log("Second call of fastFunction(2)");
+pre = new Date();
+fastFunction.memoized(2);
+console.log(`It takes ${((new Date()).valueOf() - pre.valueOf())/1000} seconds \n`);
+```
+
