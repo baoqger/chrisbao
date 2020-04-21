@@ -132,11 +132,11 @@ import { slowFunction } from "./slowFunction";
 console.log("First call of slowFunction(2)");
 let pre = new Date();
 slowFunction(2);
-console.log(`It takes ${((new Date()).valueOf() - pre.valueOf())/1000} seconds  \n`);
+console.log("It takes" + ((new Date()).valueOf() - pre.valueOf())/1000 +  "seconds \n");
 console.log("Second call of slowFunction(2)");
 pre = new Date();
 slowFunction(2);
-console.log(`It takes ${((new Date()).valueOf() - pre.valueOf())/1000} seconds \n`);
+console.log("It takes" + ((new Date()).valueOf() - pre.valueOf())/1000 +  "seconds \n");
 
 // run slowFunction with memoization
 
@@ -144,10 +144,10 @@ const fastFunction = defaultMemoize(slowFunction);
 console.log("First call of fastFunction(2)");
 pre = new Date();
 fastFunction.memoized(2);
-console.log(`It takes ${((new Date()).valueOf() - pre.valueOf())/1000} seconds \n`);
+console.log("It takes" + ((new Date()).valueOf() - pre.valueOf())/1000 +  "seconds \n");
 console.log("Second call of fastFunction(2)");
 pre = new Date();
 fastFunction.memoized(2);
-console.log(`It takes ${((new Date()).valueOf() - pre.valueOf())/1000} seconds \n`);
+console.log("It takes" + ((new Date()).valueOf() - pre.valueOf())/1000 +  "seconds \n");
 ```
 
