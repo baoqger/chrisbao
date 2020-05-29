@@ -22,17 +22,23 @@ export const animalListState: MemoizedSelector<State, Animal[]> = createSelector
 By default, the type of the returned function from `createSelector` is `MemoizedSelector<State, Result>`. Have you ever notice that? This post will introduce what it is and how it works. 
 
 
-###  what is memoization?
+###  What is memoization?
 
-Memoization is a general concept in computer science, Wikipedia explains it as following: 
+Memoization is a general concept in computer science. Wikipedia explains it as follows: 
 
-> In computing, memoization or memoisation is an optimization technique used primarily to speed up computer programs by storing the results of expensive function calls and returning the cached result when the same inputs occur again.
+> In computing, memoization or memoisation is an optimization technique used primarily to speed up computer programs by storing the results of expensive function calls and returning the cached result when the same inputs occur again. 
 
-Memoization is a great optimization solution of pure function. Generally speaking, `A pure function is a function where the return value is only determined by its input values, without side effects`. As you may know `Selector` is a pure function. 
+You can find [many articles](https://dev.to/carlillo/understanding-javascripttypescript-memoization-o7k) online for explaining memoization with code examples. Simply speaking, a hash map is used for the cached result. Technically it's not difficult at all. 
 
-`memoizedSelector` is just an ordinary selector function with memoization optimization. Next let's see how it works in the design of NgRx library.
+Memoization is a great optimization solution of pure function. Generally speaking, `A pure function is a function where the return value is only determined by its input values, without side effects`.
 
-### source code of memoizedSelector 
+As you may know, `Selector` is a pure function. `memoizedSelector` is just a normal selector function with memoization optimization. Next, let's see how it works in the design of the NgRx library.
+
+### Source code of memoizedSelector 
+
+In the source code of [`NgRx`](https://github.com/ngrx/platform/blob/master/modules/store/src/selector.ts), you can find the `selector` related code in the path of `platform/modules/store/src/selector.ts`.  
+
+`selector.ts` file is roughly 700 lines, which hold all the functionalities of it. There are many interesting points inside this module, which I can share in another article, but this post focus on memoization. So I pick up all the necessary code and put it as follows: 
 
 ``` typescript 
 export type AnyFn = (...args: any[]) => any;
@@ -108,7 +114,7 @@ export function defaultMemoize(
 }
 ```
 
-### explore the memoizedSelector method
+### Explore the memoizedSelector method
 
 ``` typescript 
 export function slowFunction(val: number): number {
