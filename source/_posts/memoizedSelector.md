@@ -113,8 +113,11 @@ export function defaultMemoize(
     return { memoized, reset, setResult};
 }
 ```
+There are many interesting Typescript stuff in the above code block. But for memoization, you can focus on the method `defaultMemoize`. In the following section, I will show you how it can make your program run faster. 
 
 ### Explore the memoizedSelector method
+
+To show how memoization works, I create a simple method `slowFunction` as following, to simulate that a method running very slowly:  
 
 ``` typescript 
 export function slowFunction(val: number): number {
@@ -128,7 +131,7 @@ export function slowFunction(val: number): number {
     return val;
 }
 ```
-
+And then test it with the following scripts: 
 
 ``` typescript 
 import { defaultMemoize } from "./memoizedSelector";
@@ -156,4 +159,23 @@ pre = new Date();
 fastFunction.memoized(2);
 console.log("It takes" + ((new Date()).valueOf() - pre.valueOf())/1000 +  "seconds \n");
 ```
+The output goes as folllowing:
+
+```
+$ ts-node index.ts
+First call of slowFunction(2)
+It takes2.001seconds
+
+Second call of slowFunction(2)
+It takes2.001seconds
+
+First call of fastFunction(2)
+It takes2.002seconds
+
+Second call of fastFunction(2)
+It takes0.001seconds
+```
+
+Compared with the original `slowFunction` method, the memoized method `fastFunction` can directly output the result for the same input. That's the power of memoization, hope you can master it. 
+
 
