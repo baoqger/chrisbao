@@ -64,11 +64,47 @@ linux-cpp           latest              5463808c4488        8 days ago          
 
 Now you can run the docker container with the newly build `linux-cpp` image:
 
-```
+```bash
 docker run -it --name cpp-dev --rm linux-cpp
 ```
 
-### 
+### Mount source code into container
+
+Follow the above steps, you can have a running Docker container with C++ development dependencies in Linux environment. 
+
+Next, you can directly start your C++ program inside the container, then build and run your code. 
+
+But if you just put your program inside the container, you will have a high risk to lose your code when the container is deleted. 
+
+The better way is placing your program source code on your local machine and sync the codes into the container as you program. This is where `mount` can help you. Mount and Volume is an important topic for Docker, you can find [some posts](https://docs.docker.com/storage/bind-mounts/) for deeper introduction. 
+
+In my case, I can realize my target with the following command:
+
+```bash
+docker run -it --name cpp-dev  --rm  -v ${PWD}:/develop  linux-cpp
+```
+
+the key and interesting part is: `-v ${PWD}:/develop`,  this will mount the current directory of the host machine into the `develop` directory inside the container. If `develop` directory is not there, Docker will make it for you. 
+
+**Note**: the current directory `pwd` command's usage has some variants based on your host machine. The above command works for the `Powershell` of Windows, if you are using `git bash` on Windows, please try: 
+
+```bash
+-v /$(pwd):/develop
+```
+
+For Mac users, try the following: 
+
+```bash
+-v $(pwd):/develop
+```
+
+Now you can happily code your program in your familiar host machine, save the code change and sync them into the container. Then build and your code inside the container with every dependency it needs. 
+
+
+
+
+
+
 
 
 
