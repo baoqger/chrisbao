@@ -41,13 +41,13 @@ RUN apt-get update && apt-get install -y \
 CMD ["bash"]
 ```
 
-**FROM** : the first part is the `FROM` command, which tells us what image to base this off of (as we know, Docker is following a multi-layer structure). In my case,  it's using the `Ubuntu:20.04` image, which again references a Dockerfile to automate the process. 
+***FROM*** : the first part is the `FROM` command, which tells us what image to base this off of (as we know, Docker is following a multi-layer structure). In my case,  it's using the `Ubuntu:20.04` image, which again references a Dockerfile to automate the process. 
 
-**ARG**: `ARG` instruction defines a variable that can be passed at build time to pass environment info. In this case, just to disable the console output during the following Linux package installation process. 
+***ARG***: `ARG` instruction defines a variable that can be passed at build time to pass environment info. In this case, just to disable the console output during the following Linux package installation process. 
 
-**RUN**: the next set of calls are the `RUN` commands. This `RUN` instruction allows you to install your application and packages for it. `RUN` executes commands in a new layer and creates a new layer by committing the results. Usually, you can find several `RUN` instructions in a Dockerfile. In this case, I want to install the C++ compiler and build tools (and some other specific dependency packages for development) which is not available in the Ubuntu base image.
+***RUN***: the next set of calls are the `RUN` commands. This `RUN` instruction allows you to install your application and packages for it. `RUN` executes commands in a new layer and creates a new layer by committing the results. Usually, you can find several `RUN` instructions in a Dockerfile. In this case, I want to install the C++ compiler and build tools (and some other specific dependency packages for development) which is not available in the Ubuntu base image.
 
-**CMD**: the last instruction `CMD` allows you to set a default command, which will be executed when you run the container without specifying a command. If Docker container runs with a command, this default one will be ignored. 
+***CMD***: the last instruction `CMD` allows you to set a default command, which will be executed when you run the container without specifying a command. If Docker container runs with a command, this default one will be ignored. 
 
 With this `Dockerfile`, we can build the image with the next Docker command:
 
@@ -86,7 +86,7 @@ docker run -it --name cpp-dev  --rm  -v ${PWD}:/develop  linux-cpp
 
 the key and interesting part is: `-v ${PWD}:/develop`,  this will mount the current directory of the host machine into the `develop` directory inside the container. If `develop` directory is not there, Docker will make it for you. 
 
-**Note**: the current directory `pwd` command's usage has some variants based on your host machine. The above command works for the `Powershell` of Windows, if you are using `git bash` on Windows, please try: 
+***Note***: the current directory `pwd` command's usage has some variants based on your host machine. The above command works for the `Powershell` of Windows, if you are using `git bash` on Windows, please try: 
 
 ```bash
 -v /$(pwd):/develop
@@ -98,7 +98,7 @@ For Mac users, try the following:
 -v $(pwd):/develop
 ```
 
-Now you can happily code your program in your familiar host machine, save the code change and sync them into the container. Then build and your code inside the container with every dependency it needs. 
+Now you can happily code your program in your familiar host machine, save the code change and sync them into the container. Then build and run your code inside the container with every dependency it needs. 
 
 
 
