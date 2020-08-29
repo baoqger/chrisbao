@@ -1,7 +1,7 @@
 ---
 title: Understand stack memory management
 date: 2020-08-19 04:54:00
-tags:
+tags: memory management, stack
 ---
 
 ### Table of Contents 
@@ -36,12 +36,16 @@ Let's say in your program there are multiple functions call each other in order.
 
 ![stack-frame](/images/stack_frames.png)
 
+**Note**: the top of the stack is the bottom part of the image. Don't feel confused for that. 
 
+#### Stack memory contents
 
+After understand stack frames, now let's dive deep into each stack frame to discover its contents.
 
+#### CPU register
 
-### Terminology
+### Mechanism of function call and return 
 
-### Procedure call
+#### function call
 
-### Procedure return
+#### function return
