@@ -1,5 +1,5 @@
 ---
-title: Understand stack memory management in bottom level
+title: Understand stack memory management
 date: 2020-08-19 04:54:00
 tags:
 ---
