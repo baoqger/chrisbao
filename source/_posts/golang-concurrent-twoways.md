@@ -100,7 +100,7 @@ In the example above the `int64` variable `v` is shared across goroutines. When 
 
 That's how shared memory across goroutines works in Golang. Let's go to message passing way in next section. 
 
-### Message Pass
+### Message Passing
 
 In Golang world, there is one sentence is famous:
 
