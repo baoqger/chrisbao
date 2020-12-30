@@ -23,6 +23,7 @@ As you can see, this post will cover several critical concepts and interesting t
   
 - **Docker-compose**: is a tool to run multi-container applications on Docker. It allows different containers can communicate with each other. In this post, I will show you how to use it as well. 
 
+All the code and config file can be found in this [github repo](https://github.com/baoqger/service-discovery-demo), please checkout the `service-discovery` branch for this post's demo. 
 
 ### Service registry and discovery demo
 
