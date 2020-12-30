@@ -6,13 +6,13 @@ tags: microservice, Load balancing, Consul, Fabio Golang, Cloud-Native, Docker
 
 ### Background
 
-In the [last post](https://baoqger.github.io/2020/11/16/golang-service-discovery-consul/), I show you how to do service discovery in a Golang Cloud-Native microservice application based on Consul and Docker with a real demo. In that demo, the simple `helloworld-server` service registers itself in Consul and the `helloworld-client` can discover the dynamic address of the service via Consul. But the previous demo has some limitations, as I mentioned in the last post, in the real world microservice application, each service may have multiple instances to handle the network requests. 
+In the [last post](https://baoqger.github.io/2020/11/16/golang-service-discovery-consul/), I show you how to do service discovery in a Golang Cloud-Native microservice application based on Consul and Docker with a real demo. In that demo, the simple `helloworld-server` service is registered in Consul and the `helloworld-client` can discover the dynamic address of the service via Consul. But the previous demo has one limitation, as I mentioned in the last post, in the real world microservice application, each service may have multiple instances to handle the network requests. 
 
 In this post, I will expand the demo to show you how to do `load balancing` when multiple instances of one service are registered in Consul. 
 
 Continue with the last post, the new demo will keep using Cloud-Native way with `Docker` and `Docker-compose`.
 
-### Introduction of `Fabio` for load balancing 
+### Fabio for load balancing 
 
 To do load balancing for Consul, there are several strategies are recommended from the Consul official document. In this post I choose to use [Fabio](https://github.com/fabiolb/fabio). 
 
@@ -26,11 +26,11 @@ Users register a service with a tag beginning with `urlprefix-`, like:
 urlprefix-/my-service
 ```
 
-Then when a request is made to fabio at `/my-service`, fabio will automatically route traffic to a healthy service in the cluster. I will show you how to do it in the following demo and also have simple research on how Fabio realize this load balancing strategy by reviewing the source code. 
+Then when a request is made to fabio at `/my-service`, fabio will automatically route traffic to a healthy service in the cluster. I will show you how to do it in the following demo. And I will also do simple research on how Fabio realizes this load balancing strategy by reviewing the source code and share the findings in the next post. 
 
-### Fabio Load balancing demo
+### Fabio load balancing demo
 
-Firstly, all the code and config file shown in this post can be found in this [github repo](https://github.com/baoqger/service-discovery-demo), please `git checkout` the `load-balancing` branch for this post's demo. 
+Firstly, all the code and config files shown in this post can be found in this [github repo](https://github.com/baoqger/service-discovery-demo), please `git checkout` the `load-balancing` branch for this post's demo. 
 
 #### Server side
 For the `helloworld-server`, there are two changes:
@@ -279,7 +279,7 @@ There several changes in this `yml` config file:
 
 #### Demo
 
-It's time to run the demo! Suppose you have all the docker images build in your local machine, then run the following command: 
+It's time to run the demo! Suppose you have all the docker images build on your local machine, then run the following command: 
 
 ```
 docker-compose up --scale helloworld-server=3
