@@ -1,5 +1,7 @@
 ---
 title: algo-part1
+date: 2020-04-10 21:00:20
+tags:
 ---
 The Coding Interview Bootcamp: Data structure and algorithm.
 
