@@ -1,14 +1,14 @@
 ---
-title: fabio-source-code-study
+title: Fabio source code study part 1
 date: 2021-01-29 22:09:56
 tags: Fabio, Golang, Source code
 ---
 ### Background
 
-In this post, I want to share the lessons learned from reading the soruce code of the project `Fabio`. In my previous blog, I shared with you how to use Fabio as a load balancing in the micro services applicatoins, in detail you can refer to this [article](https://baoqger.github.io/2020/12/30/golang-load-balancing-fabio/).  
+In this two-part blog series, I want to share the lessons learned from reading the soruce code of the project `Fabio`. In my previous blog, I shared with you how to use Fabio as a load balancing in the micro services applicatoins, in detail you can refer to this [article](https://baoqger.github.io/2020/12/30/golang-load-balancing-fabio/).  
 
 
-Since `Fabio` is not a tiny project, it's hard to cover everything inside this project. I will mainly focus on two aspects: firstly in the **architecture design  level**, I will study how it can work as a load balancer without any configuration file, and secondly in the **language level**, I want to summarize the best practice of writing Golang programs by investigating which features of Golang it uses and how it uses. 
+Since `Fabio` is not a tiny project, it's hard to cover everything inside this project. I will mainly focus on two aspects: firstly in the **architecture design  level**, I will study how it can work as a load balancer without any configuration file (Part one), and secondly in the **language level**, I want to summarize the best practice of writing Golang programs by investigating which features of Golang it uses and how it uses (Part two). 
 
 ### Fabio architecture design
 
@@ -352,3 +352,124 @@ type Route struct {
 ```
 
 That's all for the consul monitor part. Simply speaking, Fabio keeps looping the latest service status from Consul and process the status information into a routing table. 
+
+#### Proxy
+
+The second part is about network proxy, which is easier to understand than the first part. 
+
+Fabio supports various network protocols, but in this post let's focus on `HTTP/HTTPS` case. In side the `main.go` file, you can find the following function:
+
+```golang
+func newHTTPProxy(cfg *config.Config) http.Handler {
+	var w io.Writer
+
+	//Init Glob Cache
+	globCache := route.NewGlobCache(cfg.GlobCacheSize)
+
+	switch cfg.Log.AccessTarget {
+	case "":
+		log.Printf("[INFO] Access logging disabled")
+	case "stdout":
+		log.Printf("[INFO] Writing access log to stdout")
+		w = os.Stdout
+	default:
+		exit.Fatal("[FATAL] Invalid access log target ", cfg.Log.AccessTarget)
+	}
+
+	format := cfg.Log.AccessFormat
+	switch format {
+	case "common":
+		format = logger.CommonFormat
+	case "combined":
+		format = logger.CombinedFormat
+	}
+
+	l, err := logger.New(w, format)
+	if err != nil {
+		exit.Fatal("[FATAL] Invalid log format: ", err)
+	}
+
+	pick := route.Picker[cfg.Proxy.Strategy]
+	match := route.Matcher[cfg.Proxy.Matcher]
+	notFound := metrics.DefaultRegistry.GetCounter("notfound")
+	log.Printf("[INFO] Using routing strategy %q", cfg.Proxy.Strategy)
+	log.Printf("[INFO] Using route matching %q", cfg.Proxy.Matcher)
+
+	newTransport := func(tlscfg *tls.Config) *http.Transport {
+		return &http.Transport{
+			ResponseHeaderTimeout: cfg.Proxy.ResponseHeaderTimeout,
+			MaxIdleConnsPerHost:   cfg.Proxy.MaxConn,
+			Dial: (&net.Dialer{
+				Timeout:   cfg.Proxy.DialTimeout,
+				KeepAlive: cfg.Proxy.KeepAliveTimeout,
+			}).Dial,
+			TLSClientConfig: tlscfg,
+		}
+	}
+
+	authSchemes, err := auth.LoadAuthSchemes(cfg.Proxy.AuthSchemes)
+
+	if err != nil {
+		exit.Fatal("[FATAL] ", err)
+	}
+
+	return &proxy.HTTPProxy{
+		Config:            cfg.Proxy,
+		Transport:         newTransport(nil),
+		InsecureTransport: newTransport(&tls.Config{InsecureSkipVerify: true}),
+		Lookup: func(r *http.Request) *route.Target {
+			t := route.GetTable().Lookup(r, r.Header.Get("trace"), pick, match, globCache, cfg.GlobMatchingDisabled)
+			if t == nil {
+				notFound.Inc(1)
+				log.Print("[WARN] No route for ", r.Host, r.URL)
+			}
+			return t
+		},
+		Requests:    metrics.DefaultRegistry.GetTimer("requests"),
+		Noroute:     metrics.DefaultRegistry.GetCounter("notfound"),
+		Logger:      l,
+		TracerCfg:   cfg.Tracing,
+		AuthSchemes: authSchemes,
+	}
+}
+```
+
+The return value's type is `http.Handler`, which is an **interface** defined inside Go standard library as following:
+
+```golang
+type Handler interface {
+	ServeHTTP(ResponseWriter, *Request)
+}
+```
+
+And the actual return value's type is `proxy.HTTPProxy` which is a `struct` implementing the `ServeHTTP` method. You can find the code inside the `proxy` package in Fabio repo. 
+
+```golang
+type HTTPProxy struct {
+	...
+}
+
+func (p *HTTPProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	...
+}
+```
+
+Another point needs to be mentioned is `Lookup` field of `HTTPProxy` struct:
+
+```golang
+Lookup: func(r *http.Request) *route.Target {
+	t := route.GetTable().Lookup(r, r.Header.Get("trace"), pick, match, globCache, cfg.GlobMatchingDisabled)
+	if t == nil {
+		notFound.Inc(1)
+		log.Print("[WARN] No route for ", r.Host, r.URL)
+	}
+	return t
+}
+```
+
+You don't need to understand the details, just pay attention to `route.GetTable()` which is the routing table mentioned above. Consul monitor maintains the table and proxy consumes the table. That's it.
+
+In this article which is part one of this blog series , you learned how Fabio can serve as a load balancer without any config files by reviewing the design and reading the source code. 
+
+In part two, let's review how Golang was used and try to summarize the best practise of wrting Golang programs.
+
