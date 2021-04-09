@@ -1,19 +1,19 @@
 ---
-title: golang-bytes-buffer-bufio
+title: Golang bytes.Buffer and bufio
 date: 2021-04-04 17:50:14
 tags: Golang, bufio, bytes, buffer
 ---
 
 ### Background
-In this post, I will show you two Golang standard libraries' usage and implemention. They are: `bytes` (especially `bytes.Buffer`) and `bufio`.
+In this post, I will show you the usage and implementation of two Golang standard packages' : `bytes` (especially `bytes.Buffer`) and `bufio`.
 
-These two libraries are widely used in the Golang ecosystem when you're working on networking, files and other `IO` tasks. 
+These two packages are widely used in the Golang ecosystem especially works related to networking, files and other IO tasks. 
 
 ### Demo application
 
 One good way to learn new programming knowledge is reviewing how to use it in read world applications. The following great demo application is from the open source book `Network Programming with Go by Jan Newmarch`.
 
-For your convenience, I paste code here. This demo consists of two parts: client side and server side, two of which together form a simple directory browsing protocol. The client would be at the user end, talking to a server somewhere else. Client sends commands to server side that allows you to list files in a directory and change and print the directory on the server. 
+For your convenience, I paste code here. This demo consists of two parts: client side and server side, two of which together form a simple directory browsing protocol. The client would be at the user end, talking to a server somewhere else. The client sends commands to the server side that allows you to list files in a directory and print the directory on the server. 
 
 First is the client side program: 
 
@@ -294,17 +294,196 @@ func (b *Buffer) Bytes() []byte {
 }
 ```
 
-The implementation is easy to understand and no need to add more explanation. One interesting point is inside the `Write` function. It will first check whether the buffer has enough room to new bytes, if no then it will call   internal `grow` method to add more space. 
+The implementation is easy to understand and no need to add more explanation. One interesting point is inside the `Write` function. It will first check whether the buffer has enough room for new bytes, if no then it will call   internal `grow` method to add more space. 
 
-This is in fact the biggest benefit you can get from `Buffer`. You don't need to manage the dynamic change of buffer length manually, `bytes.Buffer` will help you to do that. In this way you won't waste memory by setting the possible maximum length just for providing enough space. To some extend, it is similar to the **vector** in C++ language.   
+In fact, this is the biggest benefit you can get from `Buffer`. You don't need to manage the dynamic change of buffer length manually, `bytes.Buffer` will help you to do that. In this way you won't waste memory by setting the possible maximum length just for providing enough space. To some extend, it is similar to the **vector** in C++ language.   
 
+### Bufio
 
+Next, let's review how `Bufio` pacakge works. In our demo, it is used as following: 
 
+```golang
+    reader := bufio.NewReader(os.Stdin)
 
-Demo application: directory-browsering-protocol
+    for {
+        line, err := reader.ReadString('\n')
+        // hide other code below
+    }
+```
 
-bytes.buffer variable length byte slice.
+Before we dive into the details about the demo code, let's first understand what is the purpose of `bufio` package. 
 
-bufio => reduce io system call
-customer Reader to show the buffering io behavior
-ReadSlice implementation call underlying reader.read
+First we need to understand when applications run IO operations like read or write data from or to files, network and database. It will trigger `system call` in the bottom level, which is heavy in the performance point of view.  
+
+Buffer IO is a technique used to temporarily accumulate the results for an IO operation before transmitting it forward. This technique can increase the speed of a program by reducing the number of system calls. For example, in case you want to read data from disk byte by byte. Instead of directly reading each byte from the disk every time, with buffer IO technique, we can read a block of data into buffer once, then consumers can read data from the buffer in whatever way you want. Performance will be improved by reducing heavy system calls.
+
+Concretely, let's review how `bufio` package do this. The Go official document goes like this:
+
+> Package bufio implements buffered I/O. It wraps an io.Reader or io.Writer object, creating another object (Reader or Writer) that also implements the interface but provides buffering and some help for textual I/O.
+
+Let's understand the definition by reading the source code: 
+
+```golang
+// NewReader and NewReaderSize in bufio.go
+func NewReader(rd io.Reader) *Reader {
+	return NewReaderSize(rd, defaultBufSize)
+}
+
+func NewReaderSize(rd io.Reader, size int) *Reader {
+	b, ok := rd.(*Reader)
+	if ok && len(b.buf) >= size {
+		return b
+	}
+	if size < minReadBufferSize {
+		size = minReadBufferSize
+	}
+	r := new(Reader)
+	r.reset(make([]byte, size), rd)
+	return r
+}
+```
+In our demo, we use `NewReader` which then calls `NewReaderSize` to create a new `Reader` instance. One thing need to notice is that the parameter is `io.Reader` type, which is an important interface implements only one method `Read`.
+
+```golang
+// the Reader interface in io.go file
+type Reader interface {
+	Read(p []byte) (n int, err error)
+}
+```
+In our case, we use `os.Stdin` as the function argument, which will read data from standard input. 
+
+Then let's reivew declaration of `bufio.Reader`  which wraps `io.Reader`:
+```golang
+// Reader implements buffering for an io.Reader object.
+type Reader struct {
+	buf          []byte
+	rd           io.Reader // reader provided by the client
+	r, w         int       // buf read and write positions
+	err          error
+	lastByte     int // last byte read for UnreadByte; -1 means invalid
+	lastRuneSize int // size of last rune read for UnreadRune; -1 means invalid
+}
+```
+`bufio.Reader` has many methods defined, in our case we use `ReadString`, which will call another low-level method `ReadSlice`. 
+
+```golang
+func (b *Reader) ReadSlice(delim byte) (line []byte, err error) {
+	s := 0 
+	for {
+		// Search buffer.
+		if i := bytes.IndexByte(b.buf[b.r+s:b.w], delim); i >= 0 {
+			i += s
+			line = b.buf[b.r : b.r+i+1]
+			b.r += i + 1
+			break
+		}
+
+		if b.err != nil {
+			line = b.buf[b.r:b.w]
+			b.r = b.w
+			err = b.readErr()
+			break
+		}
+
+		if b.Buffered() >= len(b.buf) {
+			b.r = b.w
+			line = b.buf
+			err = ErrBufferFull
+			break
+		}
+
+		s = b.w - b.r 
+
+		b.fill() // buffer is not full
+	}
+
+	if i := len(line) - 1; i >= 0 {
+		b.lastByte = int(line[i])
+		b.lastRuneSize = -1
+	}
+
+	return
+}
+```
+
+When `buf` byte slice contains data, it will search the target value inside it. But initially `buf` is empty, it need firstly load some data, right? That is the most interesting part. The `b.fill()` is just for that. 
+
+```golang
+func (b *Reader) fill() {
+	if b.r > 0 {
+		copy(b.buf, b.buf[b.r:b.w])
+		b.w -= b.r
+		b.r = 0
+	}
+
+	if b.w >= len(b.buf) {
+		panic("bufio: tried to fill full buffer")
+	}
+
+	// Read new data: try a limited number of times.
+	for i := maxConsecutiveEmptyReads; i > 0; i-- {
+		n, err := b.rd.Read(b.buf[b.w:]) // call the underlying Reader
+		if n < 0 {
+			panic(errNegativeRead)
+		}
+		b.w += n
+		if err != nil {
+			b.err = err
+			return
+		}
+		if n > 0 {
+			return
+		}
+	}
+	b.err = io.ErrNoProgress
+}
+```
+The data is loaded into `buf` by calling the underlying Reader,
+```golang
+n, err := b.rd.Read(b.buf[b.w:])
+```
+in our case is `os.Stdin`.
+
+Additionally, we can define our own customized `Reader` and pass it `bufio.NewReader` to understand the buffering IO technique better as following. 
+
+```golang
+package main
+
+import (
+	"bufio"
+	"fmt"
+	"io"
+)
+
+// customized Reader struct
+type Reader struct {
+	counter int
+}
+
+func (r *Reader) Read(p []byte) (n int, err error) {
+	fmt.Println("Read")
+	if r.counter >= 3 { // simulate EOF
+		return 0, io.EOF
+	}
+	s := "a,b,c,d,e,f,g,h,i,j,k,l,m,n,o,p"
+	copy(p, s)
+	r.counter += 1
+	return len(s), nil
+}
+
+func main() {
+	r := new(Reader)
+	br := bufio.NewReader(r)
+	for {
+		token, err := br.ReadSlice(',')
+		fmt.Printf("Token: %q\n", token)
+		if err == io.EOF {
+			fmt.Println("Read done")
+			break
+		}
+	}
+}
+```
+
+In this post, I only talked about `Reader` part of bufio, if you understand the behavior explained above clearly, it's easy to understand `Writer` quickly as well. 
+
