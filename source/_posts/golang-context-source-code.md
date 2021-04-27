@@ -89,7 +89,7 @@ You can see that `emptyCtx` is declared as a new customized type based on `int`.
 Let's continue to review other data types.
 
 
-#### valueCtx
+#### valueCtx and WithValue
 
 As mentioned above, one typical usage of context is passing data. In this case, you need to create a `valueCtx` with `WithValue` function. For example, the following example:
 
@@ -143,6 +143,132 @@ If the provided `key` parameter doesn't match the current context's key, then th
 ```golang
 func (*emptyCtx) Value(key interface{}) interface{} {
 	return nil
+}
+```
+
+Next, let's review another interesting type: `cancelCtx`
+
+#### cancelCtx and WithCancel
+
+First, let's see how to use `cancelCtx` and `WithCanel` with a simple example:
+
+```golang
+package main
+
+import (
+	"context"
+	"fmt"
+	"time"
+)
+
+func main() {
+	cancelCtx, cancelFunc := context.WithCancel(context.Background())
+	go task(cancelCtx)
+	time.Sleep(time.Second * 3)
+	cancelFunc()
+	time.Sleep(time.Second * 3)
+}
+
+func task(ctx context.Context) {
+	i := 1
+	for {
+		select {
+		case <-ctx.Done():
+			fmt.Println(ctx.Err())
+			return
+		default:
+			fmt.Println(i)
+			time.Sleep(time.Second * 1)
+			i++
+		}
+	}
+}
+```
+When main goroutine wants to cancel `task` goroutine, it can just call `cancelFunc`. Then the task goroutine will exit and stop running. In this way, goroutine management will be easy task. Let's review the code:
+
+```golang
+type CancelFunc func()
+
+func WithCancel(parent Context) (ctx Context, cancel CancelFunc) {
+	if parent == nil {
+		panic("cannot create context from nil parent")
+	}
+	c := newCancelCtx(parent)
+	propagateCancel(parent, &c)
+	return &c, func() { c.cancel(true, Canceled) }
+}
+```
+`cancelCtx` is complex, let's go through bit by bit. 
+
+`WithCancel` returns two values, the first one `&c` is type `cancelCtx` which is created with `newCancelCtx`, the second one `func() { c.cancel(true, Canceled) }` is type `CancenlFunc`(just a general function). 
+
+Let's review `cancelCtx` firstly:
+
+```golang
+func newCancelCtx(parent Context) cancelCtx {
+	return cancelCtx{Context: parent}
+}
+
+type cancelCtx struct {
+	Context
+
+	mu       sync.Mutex            // protects following fields
+	done     chan struct{}         // created lazily, closed by first cancel call
+	children map[canceler]struct{} // set to nil by the first cancel call
+	err      error                 // set to non-nil by the first cancel call
+}
+```
+
+`Context` is embedded inside `cancelCtx` as well. Also it defines several other fields. Let's see how it works by checking the receiver methods:
+
+```golang
+func (c *cancelCtx) Done() <-chan struct{} {
+	c.mu.Lock()
+	if c.done == nil {
+		c.done = make(chan struct{})
+	}
+	d := c.done
+	c.mu.Unlock()
+	return d
+}
+```
+
+`Done` method returns channel `done`. In the above demo, **task** goroutine listen for cancel signal from this done channel like this:
+```golang
+select {
+case <-ctx.Done():
+	fmt.Println(ctx.Err())
+	return
+...
+```
+The signal is trigger by calling the cancle function, so let's review what happens inside it and how the signals are sent to the channel. All the logic is inside `cancel` method of `cancelCtx`:
+
+```golang
+func (c *cancelCtx) cancel(removeFromParent bool, err error) {
+	if err == nil {
+		panic("context: internal error: missing cancel error")
+	}
+	c.mu.Lock()
+	if c.err != nil {
+		c.mu.Unlock()
+		return // already canceled
+	}
+	c.err = err
+	if c.done == nil {
+		c.done = closedchan
+	} else {
+		close(c.done)
+	}
+	for child := range c.children {
+		// NOTE: acquiring the child's lock while holding parent's lock.
+		child.cancel(false, err)
+	}
+	c.children = nil
+	c.mu.Unlock()
+
+	if removeFromParent {
+		removeChild(c.Context, c)
+	}
 }
 ```
 
