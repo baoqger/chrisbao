@@ -40,7 +40,7 @@ type Context interface {
 }
 ```
 
-It's just interface, it's very hard to image how to use it. So let's continue reviewing some entities implement such interface. 
+It's just interface, it's very hard to imagine how to use it. So let's continue reviewing some entities implement such interface. 
 
 When context is used, generally speaking, the first step is creating the root context with `context.Background()` function(the contexts chained together one by one and form a tree structure, and the root context is the first one in the chain). Let's check what it is: 
 
@@ -84,4 +84,65 @@ func (e *emptyCtx) String() string {
 	return "unknown empty Context"
 }
 ```
-You can see that `emptyCtx` first declared as a new customized type based on `int`.  In fact, it's not important  that `emptyCtx` is based on `int`, `string` or whatever. The important thing is all the four methods defined in interface `Context` return `nil`. So the root context **is never canceled, has no values, and has no deadline**. 
+You can see that `emptyCtx` is declared as a new customized type based on `int`.  In fact, it's not important  that `emptyCtx` is based on `int`, `string` or whatever. The important thing is all the four methods defined in interface `Context` return `nil`. So the root context **is never canceled, has no values, and has no deadline**. 
+
+Let's continue to review other data types.
+
+
+#### valueCtx
+
+As mentioned above, one typical usage of context is passing data. In this case, you need to create a `valueCtx` with `WithValue` function. For example, the following example:
+
+```golang
+rootCtx := context.Background()
+
+childCtx := context.WithValue(rootCtx, "msgId", "someMsgId")
+```
+
+`WithValue` is a function has only one return value:
+
+```golang
+func WithValue(parent Context, key, val interface{}) Context {
+	if parent == nil {
+		panic("cannot create context from nil parent")
+	}
+	if key == nil {
+		panic("nil key")
+	}
+	if !reflectlite.TypeOf(key).Comparable() {
+		panic("key is not comparable")
+	}
+	return &valueCtx{parent, key, val}
+}
+```
+
+Please ignore the `reflectlite` part, I will give a in-depth discussion about it in another post. In this post, we only need to care the return value type is `&valueCtx`:
+
+```golang
+type valueCtx struct {
+	Context
+	key, val interface{}
+}
+```
+There is one interesting Golang language feature here: `embedding`, which realizes `inheritance`. In this case, `valueCtx` has all the four methods defined in `Context`.
+In fact, `embedding` is worthy much more discussion. Simplying speaking, there are 3 types of embedding: **struct in struct**, **interface in interface** and **interface in struct**. `valueCtx` is the last type, you can refer to this great [post](https://eli.thegreenplace.net/2020/embedding-in-go-part-1-structs-in-structs/)
+
+When you want to get the value out, you can use the `Value` method: 
+
+```golang
+func (c *valueCtx) Value(key interface{}) interface{} {
+	if c.key == key {
+		return c.val
+	}
+	return c.Context.Value(key)
+}
+```
+
+If the provided `key` parameter doesn't match the current context's key, then the parent context's `Value` method will be called. If still can't find the key, the parent context's will call its parent as well. The search will pass along the chain until the root node which will return `nil` as we mentioned above:
+
+```golang
+func (*emptyCtx) Value(key interface{}) interface{} {
+	return nil
+}
+```
+
