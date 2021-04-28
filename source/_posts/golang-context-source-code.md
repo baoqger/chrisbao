@@ -1,5 +1,5 @@
 ---
-title: Golang Context package source code analysis
+title: "Golang Context package source code analysis: part 1"
 date: 2021-04-26 20:44:48
 tags:
 ---
@@ -138,7 +138,7 @@ func (c *valueCtx) Value(key interface{}) interface{} {
 }
 ```
 
-If the provided `key` parameter doesn't match the current context's key, then the parent context's `Value` method will be called. If still can't find the key, the parent context's will call its parent as well. The search will pass along the chain until the root node which will return `nil` as we mentioned above:
+If the provided `key` parameter doesn't match the current context's key, then the parent context's `Value` method will be called. If we still can't find the key, the parent context's will call its parent as well. The search will pass along the chain until the root node which will return `nil` as we mentioned above:
 
 ```golang
 func (*emptyCtx) Value(key interface{}) interface{} {
@@ -253,6 +253,7 @@ func (c *cancelCtx) cancel(removeFromParent bool, err error) {
 		c.mu.Unlock()
 		return // already canceled
 	}
+	// set the err property when cancel is called for the first time
 	c.err = err
 	if c.done == nil {
 		c.done = closedchan
@@ -271,4 +272,93 @@ func (c *cancelCtx) cancel(removeFromParent bool, err error) {
 	}
 }
 ```
+As shown above, `cancelCtx` has four properties, we can understand their purpose clearly in this `cancel`: 
+ - `mu`: a general lock to make sure goroutine safe and avoid race condition;
+ - `err`: a flag representing whether the cancelCtx is cancelled or not. When the cancelCtx is created, `err` value is `nil`. When `cancel` is called for the first time, it will be set by `c.err = err`;
+ - `done`: a channel which sends cancel signal. To realize this, context just `close` the done channel instead of send data into it. This is an **interesting point** which is different from my initial imagination before I review the source code. Yes, after a channel is closed, the receiver can still get `zero value` from the closed channel based on the channel type. Context just make use of this feature.
+ - `children`: a `Map` containing all its child contexts. When current context is cancelled, the cancel action will be propogated to the children by calling `child.cancel(false, err)` in the for loop. Then next question is when the parent-child relationship is established? The secret is inside the `propagateCancel()` function;
+
+```golang
+func propagateCancel(parent Context, child canceler) {
+	done := parent.Done()
+	if done == nil {
+		return // parent is never canceled
+	}
+
+	select {
+	case <-done:
+		// parent is already canceled
+		child.cancel(false, parent.Err())
+		return
+	default:
+	}
+
+	if p, ok := parentCancelCtx(parent); ok {
+		p.mu.Lock()
+		if p.err != nil {
+			// parent has already been canceled
+			child.cancel(false, p.err)
+		} else {
+			if p.children == nil {
+				p.children = make(map[canceler]struct{})
+			}
+			p.children[child] = struct{}{}
+		}
+		p.mu.Unlock()
+	} else {
+		atomic.AddInt32(&goroutines, +1)
+		go func() {
+			select {
+			case <-parent.Done():
+				child.cancel(false, parent.Err())
+			case <-child.Done():
+			}
+		}()
+	}
+}
+```
+`propagateCancel` contains many logics, and some of them can't be understood easily, I will write another post for those parts. But in this post, we only need to understand how to establish the relationship between parent and child for genernal cases. 
+
+The key point is function `parentCancelCtx`, which is used to find the innermost cancellable ancestor context:
+
+```golang
+func parentCancelCtx(parent Context) (*cancelCtx, bool) {
+	done := parent.Done()
+	if done == closedchan || done == nil {
+		return nil, false
+	}
+	// Value() will propagate to the root context
+	p, ok := parent.Value(&cancelCtxKey).(*cancelCtx)
+	if !ok {
+		return nil, false
+	}
+	p.mu.Lock()
+	ok = p.done == done
+	p.mu.Unlock()
+	if !ok {
+		return nil, false
+	}
+	return p, true
+}
+```
+You can notice that `Value` method is called, since we analyzed in the above section, `Value` will pass the search until the root context. Great. 
+
+Back to the `propagateCancel` function, if cancellable ancestor context is found, then current context is added into the `children` hash map as below:
+
+```golang
+if p.children == nil {
+	p.children = make(map[canceler]struct{})
+}
+p.children[child] = struct{}{}
+```
+The relationship is established. 
+
+### Summary
+
+In this article, we review the source code of `Context` package and understand how `Context`,  `valueCtx` and `cancelCtx` works. 
+
+`Context` contains the other two types of context: `timeOut` context and `deadLine` context, Let's work on that in the second part of this post series. 
+
+
+
 
