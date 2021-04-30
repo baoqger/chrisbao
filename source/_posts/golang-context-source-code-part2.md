@@ -170,7 +170,12 @@ func (c *timerCtx) cancel(removeFromParent bool, err error) {
 	c.mu.Unlock()
 }
 ```
-`timerCtx` implements `cancel` method to stop and reset the timer then delegate to `cancelCtx.cancel`
+`timerCtx` implements `cancel` method to stop and reset the timer then delegate to `cancelCtx.cancel`. 
+
+### Summary
+
+In the second part of this post series, we discussed how `timeout` and `deadline` context are implemented in the source code level. In this part, Golang struct embedding technique is used a lot, you can compare it with traditional OOP solution to have a deep understanding.
+
 
 
 
