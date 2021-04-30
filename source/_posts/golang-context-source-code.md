@@ -6,13 +6,13 @@ tags:
 
 ### Background
 
-As a Golang user and learner, I always think Golang's standard packages are great learning resource, which can provide best practise for both the languange iteself and various software or programming concepts. 
+As a Golang user and learner, I always think Golang standard package is a great learning resource, which can provide best practices for both the language itself and various software or programming concepts. 
 
-In this post, I will share what I learned about package `context`. 
+In this post, I will share what I learned about package `context`.
 
-`context` is widly used in Golang ecosystem, I bet you must often come across it, in fact many standard packages rely on it. 
+`context` is widely used in the Golang ecosystem, and I bet you must often come across it. Many standard packages rely on it. 
 
-There are many good [articles](https://golangbyexample.com/using-context-in-golang-complete-guide/) online explaining the background and usage examples of `context`, I won't spend too much time on that, just place a little bit introduction here. 
+There are many good [articles](https://golangbyexample.com/using-context-in-golang-complete-guide/) online explaining the background and usage examples of `context`, I will not spend too much time on that, just add a brief introduction here. 
 
 The problems `context` plans to solve are：
 
@@ -23,7 +23,7 @@ The problems `context` plans to solve are：
 
 You can refer to this [slide](https://talks.golang.org/2014/gotham-context.slide#1) from the author of context package to understand more about the background. 
 
-In this post, I will show you the details of context source code. You can find all the related source code inside `context.go` file. You will notice that `context` package is not big, there are totally 500 lines of codes. Moreover there are many comments, the actual code is only half. So these 200+ lines of code is a great piece of learning resource in my eyes. 
+In this post, I will show you the details of context package source code. You can find all the related source code inside the `context.go` file. You will notice that `context` package content is not long, and there are roughly 500 lines of code. Moreover, there are many comments, so the actual code is only half. These 200+ lines of code are a great piece of learning resource in my eyes. 
 
 ### Source code analysis
 
@@ -40,9 +40,9 @@ type Context interface {
 }
 ```
 
-It's just interface, it's very hard to imagine how to use it. So let's continue reviewing some entities implement such interface. 
+`Context` is just an interface, which is very hard to imagine how to use it. So let us continue reviewing some types implement such interface. 
 
-When context is used, generally speaking, the first step is creating the root context with `context.Background()` function(the contexts chained together one by one and form a tree structure, and the root context is the first one in the chain). Let's check what it is: 
+When context is used, generally speaking, the first step is creating the root context with `context.Background()` function(the contexts are chained together one by one and form a tree structure, and the root context is the first one in the chain). Let's check what it is: 
 
 ```golang
 var background = new(emptyCtx)
@@ -124,7 +124,7 @@ type valueCtx struct {
 	key, val interface{}
 }
 ```
-There is one interesting Golang language feature here: `embedding`, which realizes `inheritance`. In this case, `valueCtx` has all the four methods defined in `Context`.
+There is one interesting Golang language feature here: `embedding`, which realizes `composition`. In this case, `valueCtx` has all the four methods defined in `Context`.
 In fact, `embedding` is worthy much more discussion. Simplying speaking, there are 3 types of embedding: **struct in struct**, **interface in interface** and **interface in struct**. `valueCtx` is the last type, you can refer to this great [post](https://eli.thegreenplace.net/2020/embedding-in-go-part-1-structs-in-structs/)
 
 When you want to get the value out, you can use the `Value` method: 
@@ -138,7 +138,7 @@ func (c *valueCtx) Value(key interface{}) interface{} {
 }
 ```
 
-If the provided `key` parameter doesn't match the current context's key, then the parent context's `Value` method will be called. If we still can't find the key, the parent context's will call its parent as well. The search will pass along the chain until the root node which will return `nil` as we mentioned above:
+If the provided `key` parameter does not match the current context's key, then the parent context's `Value` method will be called. If we still can't find the key, the parent context's will call its parent as well. The search will pass along the chain until the root node which will return `nil` as we mentioned above:
 
 ```golang
 func (*emptyCtx) Value(key interface{}) interface{} {
