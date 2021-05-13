@@ -47,7 +47,7 @@ func (o *Once) doSlow(f func()) {
 ```
 Struct `Once` has a status flag `done` whose value is `0` when initialized. Wrap the logic you want to execute in a function `f`, and pass this function `f` to the `Do()` method. When `Do` is called for the first time, the logic in `f` executes after that `done` flag is set to `1`, other calls to `Do` don't execute `f`. 
 
-One point may seem misleading is that **If `once.Do(f)` is called multiple times, only the first call will invoke `f`, even if `f` has a different value in each invocation**. Check the following example:
+One misleading point is  **If `once.Do(f)` is called multiple times, only the first call will invoke `f`, even if `f` has a different value in each invocation**. Check the following example:
 
 ```golang
 package main
@@ -88,7 +88,7 @@ Even `Do` is called twice with different `f` logic, but only the first call is i
 
 ### fast path and slow path
 
-As you saw above, the implementation of `sync.Once` is very not complex. But one question comes to my mind when I double check the code. Why do we need split the logics into two functions `Do` and `doSlow`? Why the second function name is `doSlow`, and what does `slow` mean here?
+As you saw above, the implementation of `sync.Once` is not complex. But one question comes to my mind when I double check the code. Why do we need split the logics into two functions `Do` and `doSlow`? Why the second function name is `doSlow`, and what does `slow` mean here?
 
 Do you have similar questions? 
 
@@ -105,7 +105,7 @@ Note that it mentioned two words: `fast path` and `slow path`.
 
 - Fast path is a term used in computer science to describe a path with shorter instruction path length through a program compared to the 'normal' path. For a fast path to be effective it must handle the most commonly occurring tasks more efficiently than the 'normal' path, leaving the latter to handle uncommon cases, corner cases, error handling, and other anomalies. **Fast paths are a form of optimization**. 
 
-In the `Once` case, since the first call to `Do` function will set `done` to 1, so the most common case or status for `Once` is the `done` flag equals to 1. The `fast path` in `Do` method is just for this common case. While the `done` flag equals to initial status 0 can be regarded as uncommon case, which is specially handled in the `doSlow` function. The performance can be optimized in this way.
+In the `Once` case, since the first call to `Do` function will set `done` to 1, so the most common case or status for `Once` is the `done` flag equals to 1. The `fast path` in `Do` function is just for this common case. While the `done` flag equals to initial status 0 can be regarded as uncommon case, which is specially handled in the `doSlow` function. The performance can be optimized in this way.
 
 ### hot path
 
