@@ -103,7 +103,46 @@ if atomic.LoadUint32(&o.done) == 0 {
 
 Note that it mentioned two words: `fast path` and `slow path`. 
 
-  
+- Fast path is a term used in computer science to describe a path with shorter instruction path length through a program compared to the 'normal' path. For a fast path to be effective it must handle the most commonly occurring tasks more efficiently than the 'normal' path, leaving the latter to handle uncommon cases, corner cases, error handling, and other anomalies. **Fast paths are a form of optimization**. 
+
+In the `Once` case, since the first call to `Do` function will set `done` to 1, so the most common case or status for `Once` is the `done` flag equals to 1. The `fast path` in `Do` method is just for this common case. While the `done` flag equals to initial status 0 can be regarded as uncommon case, which is specially handled in the `doSlow` function. The performance can be optimized in this way.
+
+### hot path
+
+Another very interesting concept worth mentioning is `hot path`, and it occurs in the `Once` struct design.
+
+```golang
+type Once struct {
+	// done indicates whether the action has been performed.
+	// It is first in the struct because it is used in the hot path.
+	// The hot path is inlined at every call site.
+	// Placing done first allows more compact instructions on some architectures (amd64/x86),
+	// and fewer instructions (to calculate offset) on other architectures.
+	done uint32
+	m    Mutex
+}
+```
+At first glance, it's just plain and ordinary struct, but the comments emphasize that `done` **is first in the struct because it is used in the hot path**. It means that `done` is defined as the first field in `Once` struct on purpose. And the purpose is also described in the comment **Placing done first allows more compact instructions on some architectures (amd64/x86), and fewer instructions (to calculate offset) on other architectures.**
+
+What does that mean? I found a great answer in this [post](https://stackoverflow.com/questions/59174176/what-does-hot-path-mean-in-the-context-of-sync-once). The conclusion is:
+
+- A `hot path` is a sequence of instructions executed very frequently.
+
+- When accessing the first field of a structure, we can directly dereference the pointer to the structure to access the first field. To access other fields, we need to provide an `offset` from the first value in addition to the struct pointer.
+
+- In machine code, this offset is an additional value to pass with the instruction which makes it longer. The performance impact is that the CPU must perform an addition of the offset to the struct pointer to get the address of the value to access.
+
+- Thus machine code to `access the first field of a struct is more compact and faster`.
+
+Simply speaking, accessing the first field of a struct is faster since the CPU doesn't need to compute the memory offset!
+
+This is really a good lesson to show the high-level code you programmed can have such a big difference in the bottom level.
+
+
+
+
+
+
 
 
 
