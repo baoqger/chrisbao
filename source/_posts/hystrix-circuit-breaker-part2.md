@@ -13,5 +13,11 @@ If you're not familiar with `circuit breaker` pattern or `hystrix-go` project, p
 
 ### Three service degradation strategies
 
+`Hystrix` provides three different service degradation strategies to avoid the `cascading failure` happening in the entire system: `timeout`, `maximum concurrent request numbers` and `request error rate`. 
+
+- timeout: if the service call doesn't return response successfully within a predefined time duration, then the fallback logic will run. This strategy is the simplest one. 
+- maximum concurrent request numbers: when the number of concurrent requests is beyond the threshold, then the fallback logic will handle the following request. 
+- request error rate: `hystrix` will record the response status of each service call, after the error rate reaches the threshold, the breaker will be open, and the fallback logic will execute before the breaker status changes back to closed. `error rate` strategy is the most complex one. 
+
 
 
