@@ -46,11 +46,13 @@ In the above usage case, you can see that `timeout` is set to 10 seconds, the ma
 
 In the consumer application level, that's nearly all of the configuration you need to setup. `hystrix` will make the magin happen internally. 
 
-In this series of articles, I plan to show you the internals of `hystrix` by reviewing the souce code. 
+In this series of articles, I plan to show you the internals of `hystrix` by reviewing the source code. 
 
 Let's start from the easy ones: `timeout` and `max concurrent requests`, in this article. In the next articles, I'll introduce `request error rate`. 
 
 ### Timeout and Max concurrent requests
+
+Based on the above example, you can see `Go` function is the door to the source code of `hystrix`, so let's start from it as follows: 
 
 ```go
 func Go(name string, run runFunc, fallback fallbackFunc) chan error {
@@ -66,6 +68,15 @@ func Go(name string, run runFunc, fallback fallbackFunc) chan error {
 	return GoC(context.Background(), name, runC, fallbackC)
 }
 ```
+`Go` function accept three parameters: 
+- **name**: the command name, which is bound to the `circuit` created inside hystrix. 
+- **run**: a function contains the normal logic which send request to the dependency service.
+- **fallback**: a function contains the fallback logic.
+
+`Go` function just wraps `run` and `fallback` with `Context`, which is used to control and cancel goroutine, if you're not familiar with it then refer to my previous [article](https://baoqger.github.io/2021/04/26/golang-context-source-code/). Finally it will call `GoC` function.
+
+`GoC` function goes as follows: 
+
 ```go
 func GoC(ctx context.Context, name string, run runFuncC, fallback fallbackFuncC) chan error {
 	// construct a new command instance
@@ -181,7 +192,7 @@ func GoC(ctx context.Context, name string, run runFuncC, fallback fallbackFuncC)
 	return cmd.errChan
 }
 ```
-
+I admit it's complex, but it's also the core of the entire `hystrix` project. Be patient, let's review it bit by bit carefully. 
 
 outline
 
