@@ -50,7 +50,7 @@ In this series of articles, I plan to show you the internals of `hystrix` by rev
 
 Let's start from the easy ones: `timeout` and `max concurrent requests`, in this article. In the next articles, I'll introduce `request error rate`. 
 
-### Timeout and Max concurrent requests
+### Function of GoC
 
 Based on the above example, you can see `Go` function is the door to the source code of `hystrix`, so let's start from it as follows: 
 
@@ -193,6 +193,108 @@ func GoC(ctx context.Context, name string, run runFuncC, fallback fallbackFuncC)
 }
 ```
 I admit it's complex, but it's also the core of the entire `hystrix` project. Be patient, let's review it bit by bit carefully. 
+
+First of all, the code structure of `GoC` function is as follows:
+
+![GoC](/images/GoC-hystrix.png)
+
+
+  1. Construct a new `Command` object, which contains all the information for each call to `GoC` function.
+  2. Get the `circuit breaker` by name (create it if it doesn't exist) by calling `GetCircuit(name)` function.
+  3. Declare condition variable **ticketCond** and **ticketChecked** with `sync.Cond` which is used to communicate between goroutines. 
+  4. Declare function **returnTicket**. What is a **ticket**? What does it mean by **returnTicket**? Let's discuss it in detail later.
+  5. Declare another function **reportAllEvent**. The same as above, let's discuss it in the following part. 
+  6. Declare an instance of `sync.Once`, which is another interesting `synchronization primitives` provided by golang.
+  7. Launch two goroutines, each of which contains many logics too. 
+  8. Return a `channel` type value
+
+Let's review each of them one by one. 
+
+### hystrix.command
+
+`command` struct goes as follows, which embeds **sync.Mutex** and defines several fields: 
+
+```golang
+type command struct {
+	sync.Mutex
+
+	ticket      *struct{}
+	start       time.Time
+	errChan     chan error
+	finished    chan bool
+	circuit     *CircuitBreaker
+	run         runFuncC
+	fallback    fallbackFuncC
+	runDuration time.Duration
+	events      []string
+}
+```
+Note that `command` object iteself doesn't contain command name information, and its lifecycle is just inside the scope of one `GoC` call. It means that the statistic metrics about the service request like `error rate` and `concurrent request number` are not stored inside command object. Instead, such metrics are stored inside **circuit** field which is `CircuitBreaker` type. 
+
+### hystrix.CircuitBreaker
+
+As we mentioned in the workflow of `GoC` function, `GetCircuit(name)` is called to get or create the `circuit breaker`. It is implemented inside `circuit.go` file as follows:
+
+```golang
+func init() {
+	circuitBreakersMutex = &sync.RWMutex{}
+	circuitBreakers = make(map[string]*CircuitBreaker)
+}
+
+func GetCircuit(name string) (*CircuitBreaker, bool, error) {
+	circuitBreakersMutex.RLock()
+	_, ok := circuitBreakers[name]
+	if !ok {
+		circuitBreakersMutex.RUnlock()
+		circuitBreakersMutex.Lock()
+		defer circuitBreakersMutex.Unlock()
+
+		if cb, ok := circuitBreakers[name]; ok {
+			return cb, false, nil
+		}
+		circuitBreakers[name] = newCircuitBreaker(name)
+	} else {
+		defer circuitBreakersMutex.RUnlock()
+	}
+
+	return circuitBreakers[name], !ok, nil
+}
+```
+The logic is very straightforward. All the circuit breakers are stored in a map object **circuitBreakers** with the **command name** as the key. 
+
+The `newCircuitBreaker` constructor function and `CircuitBreaker` struct are as follows: 
+
+```go
+type CircuitBreaker struct {
+	Name                   string
+	open                   bool
+	forceOpen              bool
+	mutex                  *sync.RWMutex
+	openedOrLastTestedTime int64
+
+	executorPool *executorPool   // used in the strategy of max concurrent request number 
+	metrics      *metricExchange // used in the strategy of request error rate
+}
+
+func newCircuitBreaker(name string) *CircuitBreaker {
+	c := &CircuitBreaker{}
+	c.Name = name
+	c.metrics = newMetricExchange(name)
+	c.executorPool = newExecutorPool(name)
+	c.mutex = &sync.RWMutex{}
+
+	return c
+}
+```
+
+All the fields of `CircuitBreaker` are important to understand how breaker works.
+
+<img src="/images/circuitbreakstruct.png" title="circuitbreak" width="300px" height="400px">
+
+There are two fileds that are not simple type need more analysis, include `executorPool` and `metrics`. 
+- **executorPool**: used for `max concurrent request number` strategy which is just this article's topic.
+- **metrics**: used for `request error rate` strategy which will be discussed in next article, all right? 
+
 
 outline
 
