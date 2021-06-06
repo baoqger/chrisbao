@@ -299,6 +299,7 @@ There are two fileds that are not simple type need more analysis, include `execu
 
 <img src="/images/hystrix-concurrent-architecture.png" title="circuitbreak" width="800px" height="400px">
 
+<img src="/images/metrics_architecture.png" title="circuitbreak" width="800px" height="400px">
 We can find `executorPool` logics inside the `pool.go` file:
 
 ```go
