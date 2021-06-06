@@ -210,7 +210,7 @@ First of all, the code structure of `GoC` function is as follows:
 
 Let's review each of them one by one. 
 
-### hystrix.command
+### command
 
 `command` struct goes as follows, which embeds **sync.Mutex** and defines several fields: 
 
@@ -231,7 +231,7 @@ type command struct {
 ```
 Note that `command` object iteself doesn't contain command name information, and its lifecycle is just inside the scope of one `GoC` call. It means that the statistic metrics about the service request like `error rate` and `concurrent request number` are not stored inside command object. Instead, such metrics are stored inside **circuit** field which is `CircuitBreaker` type. 
 
-### hystrix.CircuitBreaker
+### CircuitBreaker
 
 As we mentioned in the workflow of `GoC` function, `GetCircuit(name)` is called to get or create the `circuit breaker`. It is implemented inside `circuit.go` file as follows:
 
@@ -295,6 +295,34 @@ There are two fileds that are not simple type need more analysis, include `execu
 - **executorPool**: used for `max concurrent request number` strategy which is just this article's topic.
 - **metrics**: used for `request error rate` strategy which will be discussed in next article, all right? 
 
+### executorPool
+
+<img src="/images/hystrix-concurrent-architecture.png" title="circuitbreak" width="800px" height="400px">
+
+We can find `executorPool` logics inside the `pool.go` file:
+
+```go
+type executorPool struct {
+	Name    string
+	Metrics *poolMetrics
+	Max     int
+	Tickets chan *struct{}
+}
+
+func newExecutorPool(name string) *executorPool {
+	p := &executorPool{}
+	p.Name = name
+	p.Metrics = newPoolMetrics(name)
+	p.Max = getSettings(name).MaxConcurrentRequests
+
+	p.Tickets = make(chan *struct{}, p.Max)
+	for i := 0; i < p.Max; i++ {
+		p.Tickets <- &struct{}{}
+	}
+
+	return p
+}
+```
 
 outline
 
