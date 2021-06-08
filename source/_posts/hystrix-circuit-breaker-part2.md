@@ -297,9 +297,6 @@ There are two fileds that are not simple type need more analysis, include `execu
 
 ### executorPool
 
-<img src="/images/hystrix-concurrent-architecture.png" title="circuitbreak" width="800px" height="400px">
-
-<img src="/images/metrics_architecture.png" title="circuitbreak" width="800px" height="400px">
 We can find `executorPool` logics inside the `pool.go` file:
 
 ```go
@@ -317,6 +314,7 @@ func newExecutorPool(name string) *executorPool {
 	p.Max = getSettings(name).MaxConcurrentRequests
 
 	p.Tickets = make(chan *struct{}, p.Max)
+	// send Max numbers of value into the Tickets channel
 	for i := 0; i < p.Max; i++ {
 		p.Tickets <- &struct{}{}
 	}
@@ -324,6 +322,40 @@ func newExecutorPool(name string) *executorPool {
 	return p
 }
 ```
+
+It makes use of golang `channel` to realize `max concurrent request number` strategy. Note that `Tickets` field which is a buffered channel with capicity of **MaxConcurrentRequests** is created. And in the following **for** loop, send value into the channel until reaching the capacity. 
+
+As we shown above, in the first goroutine of `GoC` function the `Tickets` channel is used as follows:
+
+```go
+	go func() {
+		...
+		select {
+		case cmd.ticket = <-circuit.executorPool.Tickets: // receive ticket from Tickets channel
+			ticketChecked = true
+			ticketCond.Signal()
+			cmd.Unlock()
+		default:
+			ticketChecked = true
+			ticketCond.Signal()
+			cmd.Unlock()
+			returnOnce.Do(func() {
+				returnTicket()
+				cmd.errorWithFallback(ctx, ErrMaxConcurrency) // run fallback logic when concurrent requests reach threshold
+				reportAllEvent()
+			})
+			return
+		}
+		...
+	}()
+
+```
+Each call to `GoC` function will get a **ticket** from **circuit.executorPool.Tickets** channel until no **ticket** is left, which means the number of concurrent requests reaches the threshold. In that case, the `default` case will execute and service will be gracefully degraded with fallback logic.
+
+The `max concurrent request number` strategy can be illustrated as follows:
+
+<img src="/images/hystrix-concurrent-architecture.png" title="circuitbreak" width="800px" height="400px">
+
 
 outline
 
