@@ -1,5 +1,5 @@
 ---
-title: "Circuit breaker and Hystrix: part two - timeout"
+title: "Circuit breaker and Hystrix: part two - max concurrent requests"
 date: 2021-05-30 16:41:20
 tags:
 ---
@@ -48,9 +48,9 @@ In the consumer application level, that's nearly all of the configuration you ne
 
 In this series of articles, I plan to show you the internals of `hystrix` by reviewing the source code. 
 
-Let's start from the easy ones: `timeout` and `max concurrent requests`, in this article. In the next articles, I'll introduce `request error rate`. 
+Let's start from the easy ones: `max concurrent requests` and `timeout`. Then move on to explore the complex strategy `request error rate`. 
 
-### Function of GoC
+### GoC
 
 Based on the above example, you can see `Go` function is the door to the source code of `hystrix`, so let's start from it as follows: 
 
@@ -203,7 +203,7 @@ First of all, the code structure of `GoC` function is as follows:
   2. Get the `circuit breaker` by name (create it if it doesn't exist) by calling `GetCircuit(name)` function.
   3. Declare condition variable **ticketCond** and **ticketChecked** with `sync.Cond` which is used to communicate between goroutines. 
   4. Declare function **returnTicket**. What is a **ticket**? What does it mean by **returnTicket**? Let's discuss it in detail later.
-  5. Declare another function **reportAllEvent**. The same as above, let's discuss it in the following part. 
+  5. Declare another function **reportAllEvent**. This function is critical to `error rate` strategy, and we can leave it for detailed review in the following articles. 
   6. Declare an instance of `sync.Once`, which is another interesting `synchronization primitives` provided by golang.
   7. Launch two goroutines, each of which contains many logics too. 
   8. Return a `channel` type value
@@ -287,13 +287,13 @@ func newCircuitBreaker(name string) *CircuitBreaker {
 }
 ```
 
-All the fields of `CircuitBreaker` are important to understand how breaker works.
+All the fields of `CircuitBreaker` are important to understand how the breaker works.
 
 <img src="/images/circuitbreakstruct.png" title="circuitbreak" width="300px" height="400px">
 
-There are two fileds that are not simple type need more analysis, include `executorPool` and `metrics`. 
-- **executorPool**: used for `max concurrent request number` strategy which is just this article's topic.
-- **metrics**: used for `request error rate` strategy which will be discussed in next article, all right? 
+There are two fields that are not simple type need more analysis, include `executorPool` and `metrics`. 
+- **executorPool**: used for `max concurrent request number` strategy, which is just this article's topic.
+- **metrics**: used for `request error rate` strategy, which will be discussed in the next article, all right? 
 
 ### executorPool
 
@@ -304,7 +304,7 @@ type executorPool struct {
 	Name    string
 	Metrics *poolMetrics
 	Max     int
-	Tickets chan *struct{}
+	Tickets chan *struct{} // Tickets channel 
 }
 
 func newExecutorPool(name string) *executorPool {
@@ -323,9 +323,9 @@ func newExecutorPool(name string) *executorPool {
 }
 ```
 
-It makes use of golang `channel` to realize `max concurrent request number` strategy. Note that `Tickets` field which is a buffered channel with capicity of **MaxConcurrentRequests** is created. And in the following **for** loop, send value into the channel until reaching the capacity. 
+It makes use of golang `channel` to realize `max concurrent request number` strategy. Note that `Tickets` field, which is a buffered channel with capicity of **MaxConcurrentRequests** is created. And in the following **for** loop, make the buffered channel full by sending value into the channel until reaching the capacity. 
 
-As we shown above, in the first goroutine of `GoC` function the `Tickets` channel is used as follows:
+As we have shown above, in the first goroutine of `GoC` function, the `Tickets` channel is used as follows:
 
 ```go
 	go func() {
@@ -350,19 +350,46 @@ As we shown above, in the first goroutine of `GoC` function the `Tickets` channe
 	}()
 
 ```
-Each call to `GoC` function will get a **ticket** from **circuit.executorPool.Tickets** channel until no **ticket** is left, which means the number of concurrent requests reaches the threshold. In that case, the `default` case will execute and service will be gracefully degraded with fallback logic.
+Each call to `GoC` function will get a **ticket** from **circuit.executorPool.Tickets** channel until no **ticket** is left, which means the number of concurrent requests reaches the threshold. In that case, the `default` case will execute , and the service will be gracefully degraded with fallback logic.
 
-The `max concurrent request number` strategy can be illustrated as follows:
+On the other side, after each call to `GoC` is done, the **ticket** need to be sent back to the **circuit.executorPool.Tickets**, right? Do you remember the `returnTicket` function mentioned in above section. Yes, it is just used for this purpose. The `returnTicket` function defined in `GoC` function goes as follows:
+
+```go
+	returnTicket := func() {
+		cmd.Lock()
+		for !ticketChecked {
+			ticketCond.Wait()
+		}
+		cmd.circuit.executorPool.Return(cmd.ticket) // return ticket to the executorPool
+		cmd.Unlock()
+	}
+```
+
+It calls `executorPool.Return` function: 
+
+```go
+// Return function in pool.go file
+func (p *executorPool) Return(ticket *struct{}) {
+	if ticket == nil {
+		return
+	}
+
+	p.Metrics.Updates <- poolMetricsUpdate{
+		activeCount: p.ActiveCount(),
+	}
+	p.Tickets <- ticket // send ticket back to Tickets channel
+}
+```
+
+The design and implementation of **Tickets** is a great example of `golang channel` in the real-world application.  
+
+In summary, the `max concurrent request number` strategy can be illustrated as follows:
 
 <img src="/images/hystrix-concurrent-architecture.png" title="circuitbreak" width="800px" height="400px">
 
 
-outline
+### Summary
 
-Go => GoC => Circuit => executorPool, tickets
+In this article, `max concurrent requests` strategy in `hystrix` is reviewed carefully, and I hope you can learn something interesting from it.
 
-sync.Once, sync.Cond simply explain
-
-reportEvent leave to next post
-
-fallback logic
+But I didn't cover the detailed logics inside `GoC` function, including `sync.Cond`, `sync.Once` and fallback logics. Let's review them and `timeout` strategy together in the next article. 
