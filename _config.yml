@@ -13,7 +13,7 @@ timezone: ''
 
 # URL
 ## If your site is put in a subdirectory, set url as 'http://yoursite.com/child' and root as '/child/'
-url: http://yoursite.com
+url: https://baoqger.github.io
 root: /
 permalink: :year/:month/:day/:title/
 permalink_defaults:
@@ -101,3 +101,8 @@ deploy:
   type: git
   repo: https://github.com/baoqger/baoqger.github.io.git
   branch: master
+
+
+#Sitemap
+sitemap:
+    path: sitemap.xml  
