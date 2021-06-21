@@ -8,3 +8,5 @@ deploy to github page:
  hexo clean 
  hexo g 
  hexo d
+
+create a new page: hexo new page xxx
