@@ -36,7 +36,7 @@ Next, let's investigate the project `hystrix`.
 
 `hystrix` is a very popular open source project. You can find everything about it in this [link](https://github.com/Netflix/Hystrix/wiki). 
 
-I want to quote several importants points from the above link. Hystrix is designed to do the following:
+I want to quote several important points from the above link. Hystrix is designed to do the following:
 - Give protection from and control over latency and failure from dependencies accessed (typically over the network) via third-party client libraries.
 - Stop cascading failures in a complex distributed system.
 - Fail fast and rapidly recover.

@@ -205,7 +205,7 @@ First of all, the code structure of `GoC` function is as follows:
   4. Declare function **returnTicket**. What is a **ticket**? What does it mean by **returnTicket**? Let's discuss it in detail later.
   5. Declare another function **reportAllEvent**. This function is critical to `error rate` strategy, and we can leave it for detailed review in the following articles. 
   6. Declare an instance of `sync.Once`, which is another interesting `synchronization primitives` provided by golang.
-  7. Launch two goroutines, each of which contains many logics too. 
+  7. Launch two goroutines, each of which contains many logics too. Simply speaking, the first one contains the logic of sending requests to the target service and the strategy of `max concurrent request number`, and the second one contains the `timeout` strategy. 
   8. Return a `channel` type value
 
 Let's review each of them one by one. 
