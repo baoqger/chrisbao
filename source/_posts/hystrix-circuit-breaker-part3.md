@@ -44,7 +44,52 @@ So far you should be clear about the main structure and functionalities of these
 
 ### sync.Once
 
+I may already notice the following code block, which is used several times inside `GoC` function. 
+
+```golang
+returnOnce.Do(func() {
+	returnTicket()
+	cmd.errorWithFallback(ctx, ErrTimeout) // with various error types 
+	reportAllEvent()
+})
+```
+
+**returnOnce** is type of `sync.Once`, which makes sure that the callback function of `Do` method only run once among different goroutines. 
+
+In this specific case, it can make sure that both **returnTicket()** and **reportAllEvent()** execute only once. This really makes sense, because if **returnTicket()** run multiple times for one `GoC` call, then the current concurent request number will not be correct, right? 
+
+Previously, I wrote another article about `sync.Once` in detail, you can refer to [that article](https://baoqger.github.io/2021/05/11/golang-sync-once/) for more in-depth explanation. 
+
 ### sync.Cond
+
+The implementation of **returnTicket** function goes as follows:
+
+```golang
+ticketCond := sync.NewCond(cmd)
+ticketChecked := false
+returnTicket := func() {
+	cmd.Lock()
+	for !ticketChecked {
+		ticketCond.Wait() // hang the current goroutine
+	}
+	cmd.circuit.executorPool.Return(cmd.ticket)
+	cmd.Unlock()
+}
+```
+**ticketCond** is a condition variable, and in Golang world it is type of `sync.Cond`. 
+
+Condition variable is useful in communication between different goroutines. Concretely, `Wait` method of `sync.Cond`will hung the current goroutine, and `Signal` method will wake up the blocking goroutine to continue executing. 
+
+In `hystrix` case, when **ticketChecked** is **false**, which means the current `GoC` call is not finished and the **ticket** should not be returned yet. So **ticketCond.Wait()** is called to block this goroutine and wait until the `GoC` call is completed which is notified by `Signal` method. 
+
+```golang
+ticketChecked = true
+ticketCond.Signal()
+```
+
+Note that the above two lines of code are always called together. **ticketChecked** is set to **true** means that the current `GoC` call is finished and the **ticket** is ready to return. Moreover, the `Wait` method to hang the goroutine is placed inside a **for** loop, which is also a best practise technique. 
+
+For more explanation about `sync.Cond`, please refer to my [another article](https://baoqger.github.io/2021/05/14/golang-sync-cond/).
 
 ### Fallback 
 
