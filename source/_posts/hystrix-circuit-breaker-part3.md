@@ -44,7 +44,7 @@ So far you should be clear about the main structure and functionalities of these
 
 ### sync.Once
 
-I may already notice the following code block, which is used several times inside `GoC` function. 
+You may already notice the following code block, which is used several times inside `GoC` function. 
 
 ```golang
 returnOnce.Do(func() {
@@ -76,7 +76,7 @@ returnTicket := func() {
 	cmd.Unlock()
 }
 ```
-**ticketCond** is a condition variable, and in Golang world it is type of `sync.Cond`. 
+**ticketCond** is a condition variable, and in Golang it is type of `sync.Cond`. 
 
 Condition variable is useful in communication between different goroutines. Concretely, `Wait` method of `sync.Cond`will hung the current goroutine, and `Signal` method will wake up the blocking goroutine to continue executing. 
 
@@ -92,6 +92,70 @@ Note that the above two lines of code are always called together. **ticketChecke
 For more explanation about `sync.Cond`, please refer to my [another article](https://baoqger.github.io/2021/05/14/golang-sync-cond/).
 
 ### Fallback 
+
+Finally, let's see how **fallback** function is called when the target service is not responsive. 
+
+Let's recall that each `GoC` call will create a new **command** instance. And **fallback** function will be assigned to the field with the same name, which will be used later. 
+
+```golang
+	cmd := &command{
+		run:      run,
+		fallback: fallback, // fallback logic here
+		start:    time.Now(),
+		errChan:  make(chan error, 1),
+		finished: make(chan bool, 1),
+	}
+```
+
+As we see in above sections, **errorWithFallback** method is triggered when `timeout` or `max concurrent request number` threshold is met.   
+
+```golang
+func (c *command) errorWithFallback(ctx context.Context, err error) {
+	eventType := "failure"
+	if err == ErrCircuitOpen {
+		eventType = "short-circuit"
+	} else if err == ErrMaxConcurrency {
+		eventType = "rejected"
+	} else if err == ErrTimeout {
+		eventType = "timeout"
+	} else if err == context.Canceled {
+		eventType = "context_canceled"
+	} else if err == context.DeadlineExceeded {
+		eventType = "context_deadline_exceeded"
+	}
+
+	c.reportEvent(eventType)
+	fallbackErr := c.tryFallback(ctx, err)
+	if fallbackErr != nil {
+		c.errChan <- fallbackErr
+	}
+}
+```
+**errorWithFallback** method will trigger the fallback by calling **tryFallback** while reporting the appropriate metric events(will discuss metric collection in next article).
+
+```golang
+func (c *command) tryFallback(ctx context.Context, err error) error {
+	if c.fallback == nil {
+		return err
+	}
+	fallbackErr := c.fallback(ctx, err) // execute the fallback logic here
+	if fallbackErr != nil {
+		c.reportEvent("fallback-failure")
+		return fmt.Errorf("fallback failed with '%v'. run error was '%v'", fallbackErr, err)
+	}
+
+	c.reportEvent("fallback-success")
+
+	return nil
+}
+```
+
+### Summary
+
+In this article, we talked about the `timeout` strategy which is the simplest one among all the strategies provided by `hystrix`. Some detailed Golang technique is reviewed as well to better understand the complex code logic. 
+
+In the next article let's see how to collect metrics in `hystrix` to realize the `error rate` strategy. 
+
 
 
 
