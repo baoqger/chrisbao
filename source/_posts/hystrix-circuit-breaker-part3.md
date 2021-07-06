@@ -4,13 +4,13 @@ date: 2021-06-18 15:54:02
 tags:
 ---
 
-In the [previous article](https://baoqger.github.io/2021/05/30/hystrix-circuit-breaker-part2/), we reviewed the `max concurrent request number` service degradation strategy. But some detailed techniques are not explained very clearly, which will be talked about in this article. And we will explore `timeout` strategy as well.
+In the [previous article](https://baoqger.github.io/2021/05/30/hystrix-circuit-breaker-part2/), we reviewed the `max concurrent request number` service degradation strategy. But some detailed techniques are not explained very clearly, which will be talked about in this article. And we will analyze `timeout` strategy as well.
 
 ### Timeout
 
 Compared with `max concurrent request number` strategy, `timeout` is very straightforward to understand. 
 
-As we mentioned in the previous article, the core logic of `hystrix` is inside the `GoC` function. `GoC` function internally run two goroutines. You already see that the first goroutine contains the logic to send request to the target service and the strategy of `max concurrent request number`. How about the second goroutine? Let's review it as follows:
+As we mentioned in the previous article, the core logic of `hystrix` is inside the `GoC` function. `GoC` function internally runs two goroutines. You already see that the first goroutine contains the logic to send request to the target service and the strategy of `max concurrent request number`. How about the second goroutine? Let's review it as follows:
 
 ```golang
 	go func() {
@@ -38,13 +38,13 @@ As we mentioned in the previous article, the core logic of `hystrix` is inside t
 	}()
 ```
 
-Note that A **Timer** is created with the timeout duration value from the settings. And a `select` statement lets this goroutine wait until one `case` condition receive value from the channel. The **timeout** case is just the 3nd one, which will run fallback logic with **ErrTimeout** error message. 
+Note that A **Timer** is created with the timeout duration value from the settings. And a `select` statement lets this goroutine wait until one `case` condition receives value from the channel. The **timeout** case is just the 3nd one (when the first two cases are not triggered), which will run fallback logic with **ErrTimeout** error message. 
 
 So far you should be clear about the main structure and functionalities of these two goroutines. But in detail, there are two Golang techniques need your attention: `sync.Once` and `sync.Cond`.  
 
 ### sync.Once
 
-You may already notice the following code block, which is used several times inside `GoC` function. 
+You may already notice the following code block, which is repeated several times inside `GoC` function. 
 
 ```golang
 returnOnce.Do(func() {
@@ -54,11 +54,11 @@ returnOnce.Do(func() {
 })
 ```
 
-**returnOnce** is type of `sync.Once`, which makes sure that the callback function of `Do` method only run once among different goroutines. 
+**returnOnce** is type of `sync.Once`, which makes sure that the callback function of `Do` method only runs once among different goroutines. 
 
-In this specific case, it can make sure that both **returnTicket()** and **reportAllEvent()** execute only once. This really makes sense, because if **returnTicket()** run multiple times for one `GoC` call, then the current concurent request number will not be correct, right? 
+In this specific case, it can guarantee that both **returnTicket()** and **reportAllEvent()** execute only once. This really makes sense, because if **returnTicket()** runs multiple times for one `GoC` call, then the current concurrent request number will not be correct, right? 
 
-Previously, I wrote another article about `sync.Once` in detail, you can refer to [that article](https://baoqger.github.io/2021/05/11/golang-sync-once/) for more in-depth explanation. 
+I wrote another article about `sync.Once` in detail, you can refer to [that article](https://baoqger.github.io/2021/05/11/golang-sync-once/) for more in-depth explanation. 
 
 ### sync.Cond
 
@@ -80,7 +80,7 @@ returnTicket := func() {
 
 Condition variable is useful in communication between different goroutines. Concretely, `Wait` method of `sync.Cond`will hung the current goroutine, and `Signal` method will wake up the blocking goroutine to continue executing. 
 
-In `hystrix` case, when **ticketChecked** is **false**, which means the current `GoC` call is not finished and the **ticket** should not be returned yet. So **ticketCond.Wait()** is called to block this goroutine and wait until the `GoC` call is completed which is notified by `Signal` method. 
+In `hystrix` case , when **ticketChecked** is **false**, which means the current `GoC` call is not finished and the **ticket** should not be returned yet. So **ticketCond.Wait()** is called to block this goroutine and wait until the `GoC` call is completed which is notified by `Signal` method. 
 
 ```golang
 ticketChecked = true
@@ -131,7 +131,7 @@ func (c *command) errorWithFallback(ctx context.Context, err error) {
 	}
 }
 ```
-**errorWithFallback** method will trigger the fallback by calling **tryFallback** while reporting the appropriate metric events(will discuss metric collection in next article).
+**errorWithFallback** method will run the fallback by calling **tryFallback** and report the metric events such as **fallback-failure** and **fallback-success**(will discuss metric collection in next article).
 
 ```golang
 func (c *command) tryFallback(ctx context.Context, err error) error {
@@ -152,7 +152,7 @@ func (c *command) tryFallback(ctx context.Context, err error) error {
 
 ### Summary
 
-In this article, we talked about the `timeout` strategy which is the simplest one among all the strategies provided by `hystrix`. Some detailed Golang technique is reviewed as well to better understand the complex code logic. 
+In this article, we talked about the `timeout` strategy which is the simplest one among all the strategies provided by `hystrix`. Some detailed Golang techniques are reviewed as well to have a better understand the complex code logic. 
 
 In the next article let's see how to collect metrics in `hystrix` to realize the `error rate` strategy. 
 
