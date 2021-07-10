@@ -6,7 +6,7 @@ tags:
 
 ### Background
 
-When you want to do the load performance test to your HTTP backend service, a handy and powerful tool can make your job mush easier. For example, `ApacheBench` (short for [ab](https://en.wikipedia.org/wiki/ApacheBench)) is widely used in this field. But it is not today's topic. Instead, I want to introduce [Hey](https://github.com/rakyll/hey) written in `Golang` and supports the same functionality as `ab`.  
+When you want to do the load performance test to your HTTP backend service, a handy and powerful tool can make your job much easier. For example, `ApacheBench` (short for [ab](https://en.wikipedia.org/wiki/ApacheBench)) is widely used in this field. But it is not today's topic. Instead, I want to introduce [Hey](https://github.com/rakyll/hey) written in `Golang` and supports the same functionality as `ab`.  
 
 `Hey` usage goes as follows:
 
@@ -25,16 +25,20 @@ Options:
 // other options are hidden
 ```
 
-I didn't list all the options, but just show several ones related to this article's content. As you can see in the above list, `Hey` can support different practical features, such as **multiple workers** to run in the **concurrent** style and **rate limit** by **queries per second (QPS)**. It can also support **run by duration** and **run by request number** two modes.
+I didn't list all of the options but only show several related to this article's content. As you can see in the above list, `Hey` can support different practical features, such as **multiple workers** to run in the **concurrent** style and **rate limit** by **queries per second (QPS)**. It can also support **run by duration** and **run by request number** two modes.
 
 In this article, we can review the design and implementation of `Hey` to see how to make a load performance testing tool.
 
 
 ### Architecture Design
-The design of `Hey` is not complex and the design can be divided into the following three parts:
-- Control logic: the main workflow like how to set up multiple concurrent workers, how to control QPS rate limiter and how to exit the process when duration is reached; 
-- HTTP request configuration: the headers or parameters configuration needed to send  request;   
+The design of `Hey` is not complex, and the architecture can be divided into the following three parts:
+- Control logic: the main workflow like how to set up multiple concurrent workers, how to control QPS rate limiter, and how to exit the process when duration is reached; 
+- HTTP request configuration: the headers or parameters needed to send  request;   
 - Test report: print or save the result after the load testing finish. 
+
+The architecture diagram goes as follows, after reading this article you'll understand every element in this diagram: 
+
+<img src="/images/hey.png" title="hey architecture" width="800px" height="400px">
 
 This article will focus on the first item (since it is the real interesting part) to show how to use `Golang`'s concurrent programming techniques to realize these features.
 
@@ -182,9 +186,9 @@ But if the user sets the **duration** option, what is the number of requests? Yo
 		}
 	}
 ```
-Note that when **duration** is set, the request number will be `math.MaxInt32` which is an extremely large integer. In this method, **Hey** can combine **run by duration** and **run by request number** two modes together. 
+When the user sets **duration** option, the request number will be `math.MaxInt32`. In this method, **Hey** can combine **run by duration** and **run by request number** two modes together. 
 
-As we mentioned in the introduction part, `Hey` can support **QPS** rate limit and this strategy is written inside the **runWorker** method. Note that a `receive-only channel` **throttle** is created with `time.Tick`, which sends out a value in each time period. And the time period is defined by 
+As we mentioned in the introduction part, `Hey` can support **QPS** rate limit, and this strategy is written inside the **runWorker** method. Note that a `receive-only channel` **throttle** is created with `time.Tick`, which sends out a value in each time period. And the time period is defined by 
 
 ```golang
 time.Duration(1e6/(b.QPS)) * time.Microsecond
@@ -192,7 +196,7 @@ time.Duration(1e6/(b.QPS)) * time.Microsecond
 
 For example, **QPS = 1000**, then the time period is 100ms, every 100ms **throttle** channel will receive a value.  
 
-**throttle** is placed before **makeRequest()** call, and in this way we can realize the rate limit effect. 
+**throttle** is placed before **makeRequest()** call, and in this way, we can realize the rate limit effect. 
 
 ### Stop Worker
 
@@ -238,7 +242,9 @@ func runReporter(r *report) {
   	r.done <- true // send value done channel
 }
 ```
-In this case, a `for` is used to receive value from the channel. Note that **the loop will continue until the channel is closed**. So there must be one place where the channel is closed, or else the `deadlock` issue will occur. In detail, you can refer to my previous [article](https://baoqger.github.io/2020/10/26/golang-concurrent-twoways/) for more advanced explanations.  
+In this case, a `for` is used to receive all the values from the channel. Note that **the loop will continue until the channel is closed**. It is another very typical concurrent programming pattern in `Golang`. We can realize the same functionality by using `select case` pattern, as long as we can add one more channel to send the exit signal. But on the syntax level, `for` loop pattern is much more cleaner.  
+
+So there must be one place where the channel is closed, or else the `deadlock` issue will occur. In detail, you can refer to my previous [article](https://baoqger.github.io/2020/10/26/golang-concurrent-twoways/) for more advanced explanations.  
 
 The channel is closed in the **Finish** method like this: 
 
@@ -251,7 +257,12 @@ func (b *Work) Finish() {
 	b.report.finalize(total)
 }
 ```
-Please also note that how the **done** channel works. **Finish** method firstly `close` the **results** channel, then the **for** loop will break and `r.done <- true` can have chance to run. Finally **b.report.finalize()** can print the result since **<-b.report.done** is not blocked. 
+Please also note that how the **done** channel works. **Finish** method firstly `close` the **results** channel, then the **for** loop will break and `r.done <- true` can have chance to run. Finally **b.report.finalize()** can print the result since **<-b.report.done** is not blocked.  t
+
+### Summary
+
+In this article, I show you how to write a load performance testing CLI tool by reviewing **Hey** as an example. In the code level we discussed several concurrent programming patterns provided by Golang. Concurrent(or parallel) programming is difficult, and Golang is build just for that. Keep practice. 
+
 
 
 
