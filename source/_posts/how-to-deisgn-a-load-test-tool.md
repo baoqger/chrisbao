@@ -1,5 +1,5 @@
 ---
-title: "How to design a load performance test CLI tool"
+title: "How to write a load performance test CLI tool"
 date: 2021-07-04 10:18:43
 tags:
 ---
