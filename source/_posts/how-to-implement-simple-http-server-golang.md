@@ -27,6 +27,38 @@ func main() {
 
 You can finish the job easily because `net/http` package implements the `HTTP` protocol completely. Without `net/http` package how can you do that? That's the target of this article. 
 
-**Note**: 
+**Note**: This article is inspired by [Joe Schafer's post](https://joe.schafer.dev/go-server-with-syscalls/) a lot. My implementation has something different which totally removes dependency on Golang's `net` package, but the idea of using `system call` in Golang to setup the TCP/IP connetion is the same. Thanks very much for Joe Schafer's interesting post.
+
+Another thing I need to mention is this article will cover many concepts, but it's very difficult to discuss all of them in the detail. To understand this article smoothly, you need some prerequisite knowledge such as `OSI model`, `TCP/IP protocol`, `socket programming`, `HTTP protocol` and `system call`. I will add some explanations on these topics to help you understand this article and give some references and links to let you continue exploring more in advanced level. 
+
+### OSI model, TCP/IP and HTTP
+
+[`OSI model`](https://en.wikipedia.org/wiki/OSI_model) partitions the data flow in a communication system into **seven abstraction layers**. These layers form a stack, with each layer communicating with the layer above and the layer below as follows: 
+
+<img src="/images/osi_model.png" title="network" width="400px" height="300px">
+
+For example, `HTTP` is in **layer 7**, `TCP` is in **layer 4** and `IP` is in **layer 3**. 
+
+OSI model is a general one, which can be simplified into a layered model more  consistent with Unix as follows: 
+
+- Application Layer (telnet, ftp, http)
+- Host-to-Host Transport Layer (TCP, UDP)
+- Internet Layer (IP and routing)
+- Network Access Layer (Ethernet, wi-fi)
+
+The protocol layers go from the physical implementation of transmitting binary digits across a communications medium to the highest-level represention of data in  an application as follows:
+
+
+
+
+
+<img src="/images/socket_network.png" title="network" width="600px" height="400px">
+
+* reference to other articles. difference to other articles
+* basic OSI model and TCP/IP socket network programming
+* HTTP message structure
+* socket programming with Linux system call: create new socket, bind, listen. Read and writ to or from the socket
+* what is socket? file descriptor
+* HTTP parser. SimpleNet package
 
 
