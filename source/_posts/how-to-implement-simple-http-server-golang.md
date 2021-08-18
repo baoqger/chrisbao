@@ -33,26 +33,40 @@ Another thing I need to mention is this article will cover many concepts, but it
 
 ### OSI model, TCP/IP and HTTP
 
-[`OSI model`](https://en.wikipedia.org/wiki/OSI_model) partitions the data flow in a communication system into **seven abstraction layers**. These layers form a stack, with each layer communicating with the layer above and the layer below as follows: 
+##### OSI network model
+
+[`OSI model`](https://en.wikipedia.org/wiki/OSI_model) partitions the data flow in a communication system into **seven abstraction layers**. These layers form a protocol stack, with each layer communicating with the layer above and the layer below as follows: 
 
 <img src="/images/osi_model.png" title="network" width="400px" height="300px">
 
 For example, `HTTP` is in **layer 7**, `TCP` is in **layer 4** and `IP` is in **layer 3**. 
 
-OSI model is a general one, which can be simplified into a layered model more  consistent with Unix as follows: 
+OSI is a general model, which can be simplified into a layered model more  consistent with Unix as follows: 
 
 - Application Layer (telnet, ftp, http)
 - Host-to-Host Transport Layer (TCP, UDP)
 - Internet Layer (IP and routing)
 - Network Access Layer (Ethernet, wi-fi)
 
-The protocol layers go from the physical implementation of transmitting binary digits across a communications medium to the highest-level represention of data in  an application as follows:
+The critical point to understand is `data encapsulation`.  The data flow goes from the bottom physical level to the highest-level represention of data in  an application.
+
+Each layer has administrative information that it has to keep about its own layer. It does this by adding header information to the packet it receives from the layer above, as the packet passes down. Each header contains information regarding the message contents. For example, the `HTTP` sends data from one host to another. It uses the `TCP` protocol on top of the `IP` protocol, which may be sent over `Ethernet`. This looks like: 
+
+<img src="/images/data_encapsulation.png" title="network" width="400px" height="300px">
 
 
 
+The packet transmitted over ethernet, is the bottom one. On the receiving side, these headers are removed as the packet moves up.
 
+
+
+##### TCP/IP
 
 <img src="/images/socket_network.png" title="network" width="600px" height="400px">
+
+##### Socket
+
+##### HTTP
 
 * reference to other articles. difference to other articles
 * basic OSI model and TCP/IP socket network programming
