@@ -58,13 +58,19 @@ Each layer has administrative information that it has to keep about its own laye
 
 The packet transmitted over ethernet, is the bottom one. On the receiving side, these headers are removed as the packet moves up.
 
-
-
-##### TCP/IP
+Next let's see how `TCP/IP` stack encapsulates `HTTP` message and send it over the network through `socket`. The idea can be illustrated with the following image: 
 
 <img src="/images/socket_network.png" title="network" width="600px" height="400px">
 
+I will explain how it works by writing a HTTP server from scratch, you can refer to this [Github repo](https://github.com/baoqger/http-server-scratch) to get all the code. 
+
+##### TCP/IP
+
+
+
 ##### Socket
+
+<img src="/images/socket_tcp.png" title="network" width="600px" height="400px">
 
 ##### HTTP
 
