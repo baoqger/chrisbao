@@ -151,12 +151,70 @@ gnudemo:
 	cc -o my_app main.c $(CFLAGS) $(GNULIBS)
 ```
 
+Understand the `GNU` convention can make your development more easier, right? 
 
-build of main.c
-  -l option order issue
+Then next step let's run the demo app by simply calling `./my_app`, but you'll get the following error message:
 
-where should we install shared library
-    ldd
-    ldconfig
-    ld.so
+```
+./my_app: error while loading shared libraries: libmy_shared.so: cannot open shared object file: No such file or directroy
+```
 
+What's happening? 
+
+### Dynamic linker
+
+When we start up an executable, the Linux kernel automatically runs the `dynamic linker` (or dynamic loader). This dynamic linker, in turn, finds and loads all other shared libraries used by the program.
+
+In fact, the executable file in Linux system is usually in the format of [`ELF`](https://linux-audit.com/elf-binaries-on-linux-understanding-and-analysis/) which abbreviates `Executable and Linkable Format`. The ELF executable contains linking information, and the dynamic linker just reads that information to load shared libraries. 
+
+In Linux system, the dynamic linker is name `ld.so`
+
+Based on the above error message, we can say that the dynamic linker cannot find the shared library. We can verify this point by running `ldd` command, which is used to print the shared objects (shared libraries) required by each program or shared object specified on the command line.
+
+<img src="/images/ldd-result.png" title="ldd" width="800px" height="600px">
+
+Clearly, our shared library `libmy_shared.so` is not found. We need to take a look how at `ld.so` works. The best way to find such information is running `man` command. We can get the following information in the `ld.so` man document:
+
+<img src="/images/ldso.png" title="ld.so" width="800px" height="600px">
+
+Based on this screenshot, we can solve this issue in three ways:
+
+- install the shared library in the directory: `/lib` or `/usr/lib`
+- edit the environment variable `LD_LIBRARY_PATH` by appending the path of directories containing our library 
+- update the cache file `/etc/ld.so.cache`
+
+The first two methods can work well based on my test, but personally I recommend to use the third method, which is a more systematic way to register a library. 
+
+### Register library
+
+To register a new library, we need to use command `ldconfig` which configures dynamic linker run-time bindings. 
+
+`/etc/ld.so.conf`
+
+`ldconfig` will search `.so` library files in some specific directories, and the search result will be updated to dynamic linker's cache file `/etc/ld.so.cache`. 
+
+And one of the directory `ldconfig` will look at is `/etc/ld.so.conf`. In our Ubuntu system, it's in fact a file as follows:
+
+<img src="/images/ld.so.conf.png" title="ld.so.conf" width="800px" height="600px">
+
+it is expanded to all the `.conf` files inside `ld.so.conf.d`, in my case, there is one default file `libc.conf` as follows: 
+
+<img src="/images/libc.conf.png" title="libc.conf" width="800px" height="600px">
+
+Note that `/usr/local/lib` is defined inside the file, then `ldconfig` will search .so libraries in this directory. 
+
+As we mentioned in above section, `/usr/local/lib` is just the place to install shared library based on GNU convention. Right? 
+
+So we can simply run `ldconfig` command without any option to **register a new library** (make sure the library is install in that directory): 
+
+<img src="/images/ldconfig.png" title="ldconfig" width="800px" height="600px">
+
+In the above screenshot, you can see the change before and after running command `sudo ldconfig`. (`ldconfig -p` will list the current libraries reading from cache file `/etc/ld.so.cache`). After registering the library, it is added into the cache file of dynamic linker, right? Let's verify this again with `ldd`:   
+
+<img src="/images/ldd-result-after.png" title="ldd-result" width="800px" height="600px">
+
+Our new shared library can be found! Then we can run the app successfully as well. 
+
+### Summary
+
+In this article we discussed several important tools like `ld.so`, `ldd`, `ldconfig` and `gcc`, which help you build and import shared libraries. Another thing is `GNU` convention or standard which defines the behavior of these tools.  
