@@ -10,19 +10,19 @@ As the first article of this series, I will give a general introduction to `circ
 
 ### Circuit breaker
 
-Software in distributed architectures generally have many dependencies, and the failure at some point for each dependency(even the most reliable service) is inevitably. 
+Software in distributed architectures generally have many dependencies, and the failure at some point for each dependency(even the most reliable service) is inevitable. 
 
-What happens if our failing service become unresponsive? All services that rely on it have risk to become unresponsive, too. This is called `catastrophic cascading failure.`
+What happens if our failing service becomes unresponsive? All services that rely on it have risks to become unresponsive, too. This is called `catastrophic cascading failure.`
 
 The basic idea behind the circuit breaker is very simple. A circuit breaker works by wrapping calls to a target service and keeps monitoring the failure rates. Once the failures reach a certain threshold, the circuit breaker will trip ，and all the further calls to the circuit return with a fault or error. 
 
-The design philosophy behind circuit breaker pattern is `fail fast`: when a service becomes unresponsive, other services relying on it should stop waiting for it and start dealing with the fact that the failing service may be unavailable. By preventing a single service's failure cascading through the entire system, circuit breaker pattern contributes to the `stability` and `resilience` of the whole system.  
+The design philosophy behind the circuit breaker pattern is `fail fast`: when a service becomes unresponsive, other services relying on it should stop waiting for it and start dealing with the fact that the failing service may be unavailable. By preventing a single service's failure cascading through the entire system, the circuit breaker pattern contributes to the `stability` and `resilience` of the whole system.  
 
 The circuit breaker pattern can be implemented as a finite-state machine shown below:
 
 ![circuit-breaker](/images/circuit-breaker.png)
 
-There are three status: `open`, `closed` and `half-open`
+There are three statuses: `open`, `closed` and `half-open`
 
 - **closed**: Requests are passed to the target service. Keep monitoring the metrics like error rate, request numbers and timeout. When these metrics exceed a specific threshold(which is set by the developer), the breaker is tripped and transitions into `open` status.   
 - **open**: Requests are not passed to the target service, instead the `fallback` logic(which is defined by developer as well) will be called to handle the failure. The breaker will stay `open` status for a period of time called `sleeping window`, after which the breaker can transition from `open` to `half-open`.  
