@@ -88,6 +88,28 @@ Obviously, the 10 HTTP requests are not persistent since 10 TCP connections are 
 
 <img src="/images/state-tcp-connection.png" title="state tcp termination" width="600px" height="400px">
 
+I will not cover the details in this article. But we need to understand the meaning of `TIME-WAIT`. 
+
+In the `four-way handshake` process, the client will send the `ACK` packet to terminate the connection, but the state of TCP can't immediately go to `CLOSED`. The client has to wait for some time and the state in this waiting process is called `TIME-WAIT`. The TCP connection needs this `TIME-WAIT` state for two main reasons. 
+- The first is to provide enough time that the `ACK` is received by the other peer. 
+- The second is to provide a buffer period between the end of current connection and any subsequent ones. If not for this period, it's possible that packets from different connections could be mixed. In detail, you can refer to this [book](http://www.tcpipguide.com/free/t_TCPConnectionTermination-3.htm).
+
+In our demo application case, if you wait for a while after the program stops, and run the `netstat` command again then no TCP connection will be listed in the output since they're all closed. 
+
+Another tool to verify the TCP connections is `tcpdump`, which can capture every network packet send to your machine. In our case, you can run the following `tcpdump` command: 
+
+```shell
+sudo tcpdump -i any -n host localhost
+```
+
+It will capture all the network packets send from or to the localhost (we're running the server in localhost, right?). `tcpdump` is a great tool to help you understand the network, you can refer to its [document](https://www.tcpdump.org/) for more help.
+
+**Note**: in our demo code above, we send 10 HTTP requests in sequence, which will make the capture result from `tcpdump` too long. So I modified the for loop to only send 2 sequential requests, which is enough to verify the behavior of `persistent connection`. The result goes as follows: 
+
+<img src="/images/tcpdump-non-persistent.png" title="tcpdump" width="1200px" height="1000px">
+
+In `tcpdump` output, the `Flag [S]` represents `SYN` flag, which is used to establish the TCP connection. The above snapshot contains two `Flag [S]` packets. The first `Flag [S]` is triggered by the first HTTP call, and the following packets are HTTP request and response. Then you can see the second `Flag [S]` packet to open a new TCP connection, which means the second HTTP request is not `persistent connection` as we hope. 
+
 Outline:
 1. background: why we need persistent connection.
 
