@@ -18,6 +18,75 @@ In this article, I will show you how `persistent connection` works based on a Go
 - Golang `http.Client` usage (and a little bit source code analysis)
 - network analysis with `netstat` and `tcpdump`
 
+You can find the demo Golang application in this github [repo](https://github.com/baoqger/http-persistent-connection-golang).
+
+### Sequential requests
+
+Let's start from the simple case where the client keeps sending `sequential` requests to the server. The [code](https://github.com/baoqger/http-persistent-connection-golang/blob/master/sequence/non-persistent-connection/non-persistent-connection.go) goes as follows: 
+
+```golang
+package main
+
+import (
+	"fmt"
+	"log"
+	"net/http"
+	"time"
+)
+
+func startHTTPserver() {
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Duration(50) * time.Microsecond)
+		fmt.Fprintf(w, "Hello world")
+	})
+
+	go func() {
+		http.ListenAndServe(":8080", nil)
+	}()
+
+}
+
+func startHTTPRequest() {
+	counter := 0
+	for i := 0; i < 10; i++ {
+		_, err := http.Get("http://localhost:8080/")
+		if err != nil {
+			panic(fmt.Sprintf("Error: %v", err))
+		}
+		log.Printf("HTTP request #%v", counter)
+		counter += 1
+		time.Sleep(time.Duration(1) * time.Second)
+	}
+}
+
+func main() {
+	startHTTPserver()
+
+	startHTTPRequest()
+}
+```
+We start a HTTP server in a Goroutine, and keep sending ten sequential requests to it. Right? Let's run the application and check the numbers and status of TCP connections.
+
+After running the above code, you can see the following output: 
+
+<img src="/images/sequential-request.png" title="tcp termination" width="800px" height="600px">
+
+When the application stops running, we can run the following `netstat` command: 
+
+```shell
+netstat -n  | grep 8080
+```
+
+The TCP connections are listed as follows:
+
+<img src="/images/sequential-request-netstat.png" title="tcp termination" width="800px" height="600px">
+
+Obviously, the 10 HTTP requests are not persistent since 10 TCP connections are opened. 
+
+**Note**: the last column of `netstat` shows the state of TCP connection. The state of TCP connection termination process can be explained with the following image: 
+
+<img src="/images/state-tcp-connection.png" title="state tcp termination" width="600px" height="400px">
 
 Outline:
 1. background: why we need persistent connection.
