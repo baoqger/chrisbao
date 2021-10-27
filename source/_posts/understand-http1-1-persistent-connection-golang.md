@@ -1,24 +1,24 @@
 ---
-title: Understand how HTTP/1.1 persistent connection works based on Golang
+title: "Understand how HTTP/1.1 persistent connection works based on Golang: part one" 
 date: 2021-10-25 11:11:28
 tags: HTTP/1.1, persistent connection, keep-alive, TCP, netstat, tcpdump, Golang, connection pool
 ---
 
 ### Background
 
-Initially, `HTTP` was a single request-and-response model. A `HTTP` client opens the `TCP` connection, requests a resource, gets the response, and the connection is closed. And establishing and terminating each `TCP` connection is a resource-consuming operation (in detail, you can refer to my previous [article](https://baoqger.github.io/2019/07/14/why-tcp-four-way-handshake/)). As the web application became more and more complex, displaying a single page may require several HTTP requests, too many TCP connection operations will have a bad impact on the performance. 
+Initially, `HTTP` was a single request-and-response model. An `HTTP` client opens the `TCP` connection, requests a resource, gets the response, and the connection is closed. And establishing and terminating each `TCP` connection is a resource-consuming operation (in detail, you can refer to my previous [article](https://baoqger.github.io/2019/07/14/why-tcp-four-way-handshake/)). As the web application becomes more and more complex, displaying a single page may require several HTTP requests, too many TCP connection operations will have a bad impact on the performance. 
 
 <img src="/images/short-lived-connection.png" title="tcp termination" width="400px" height="300px">
 
-So `persistent-connection` (which is also called `keep-alive`) model is created in `HTTP/1.1` protocol. In this model TCP connections keep opened between several successive requests, in this way the time needed to open new connections will be reduced. 
+So `persistent-connection` (which is also called `keep-alive`) model is created in `HTTP/1.1` protocol. In this model, TCP connections keep open between several successive requests, and in this way, the time needed to open new connections will be reduced. 
 
 <img src="/images/persistent-http.png" title="tcp termination" width="400px" height="300px">
 
-In this article, I will show you how `persistent connection` works based on a Golang application. We will do some experiment based on the demo app, and verify the TCP connection behavior with some popular network packet analysis tools. In short, After reading this article, you will learn:
+In this article, I will show you how `persistent connection` works based on a Golang application. We will do some experiments based on the demo app, and verify the TCP connection behavior with some popular network packet analysis tools. In short, After reading this article, you will learn:
 - Golang `http.Client` usage (and a little bit source code analysis)
 - network analysis with `netstat` and `tcpdump`
 
-You can find the demo Golang application in this github [repo](https://github.com/baoqger/http-persistent-connection-golang).
+You can find the demo Golang application in this Github [repo](https://github.com/baoqger/http-persistent-connection-golang).
 
 ### Sequential requests
 
@@ -66,7 +66,7 @@ func main() {
 	startHTTPRequest()
 }
 ```
-We start a HTTP server in a Goroutine, and keep sending ten sequential requests to it. Right? Let's run the application and check the numbers and status of TCP connections.
+We start an HTTP server in a Goroutine, and keep sending ten sequential requests to it. Right? Let's run the application and check the numbers and status of TCP connections.
 
 After running the above code, you can see the following output: 
 
@@ -110,18 +110,73 @@ It will capture all the network packets send from or to the localhost (we're run
 
 In `tcpdump` output, the `Flag [S]` represents `SYN` flag, which is used to establish the TCP connection. The above snapshot contains two `Flag [S]` packets. The first `Flag [S]` is triggered by the first HTTP call, and the following packets are HTTP request and response. Then you can see the second `Flag [S]` packet to open a new TCP connection, which means the second HTTP request is not `persistent connection` as we hope. 
 
-Outline:
-1. background: why we need persistent connection.
+Next step, let's see how to make HTTP work as a persistent connection in Golang. 
 
-2. theory: how persistent connection works. In Both HTTP level and TCP level (keep alive for HTTP and TCP is not the same thing add a link to another post)
+In fact,this is a well known issue in Golang ecosystem, you can find the information in the [official document](https://pkg.go.dev/net/http#Client):
 
-3. demo 1: sequence case
-   1. non persistent connection: demonstrated by netstat command show tcpdump command result 
-   2. persistent connection
-   3. no source code review, link to next post
-4. demo 2: concurrent case
-   1. default connection pool and show result with netstat result
-   2. a little bit source code to explain the Transport and connection pool
-   3. tunning connection pool and show result with netstat result
-   4. Wait_time state and port exhaustion
-   5. HTTP2
+* If the returned error is nil, the Response will contain a non-nil Body which the user is expected to close. If the Body is not both read to EOF and closed, the Client's underlying RoundTripper (typically Transport) may not be able to re-use a persistent TCP connection to the server for a subsequent "keep-alive" request.
+
+The fix will be straightforward by just adding two more lines of code as follows: 
+
+```golang
+package main
+
+import (
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"time"
+)
+
+func startHTTPServer() {
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Duration(50) * time.Microsecond)
+		fmt.Fprintf(w, "Hello world")
+	})
+
+	go func() {
+		http.ListenAndServe(":8080", nil)
+	}()
+
+}
+
+func startHTTPRequest() {
+	counter := 0
+	for i := 0; i < 10; i++ {
+		resp, err := http.Get("http://localhost:8080/")
+		if err != nil {
+			panic(fmt.Sprintf("Error: %v", err))
+		}
+		io.Copy(ioutil.Discard, resp.Body) // read the response body
+		resp.Body.Close() // close the response body
+		log.Printf("HTTP request #%v", counter)
+		counter += 1
+		time.Sleep(time.Duration(1) * time.Second)
+	}
+}
+
+func main() {
+	startHTTPServer()
+
+	startHTTPRequest()
+}
+```
+
+let's verify by running `netstat` command, the result goes as follows: 
+
+<img src="/images/netstat-persistent.png" title="tcpdump" width="800px" height="600px">
+
+This time 10 sequential HTTP requests establish only one TCP connection. This behavior is just what we hope: `persistent connection`.  
+
+We can double verify it by doing the same experiment as above: run two HTTP requests in sequence and capture packets with `tcpdump`: 
+
+<img src="/images/tcpdump-persistent.png" title="tcpdump" width="1200px" height="1000px">
+
+This time, only one `Flag [S]` packet is there! The two sequential HTTP request re-use the same underlying TCP connection. 
+
+### Summary
+
+In this article, we showed how HTTP `persistent connection` works in the case of sequential requests. In the next article, we can show you the case of concurrent requests. 
