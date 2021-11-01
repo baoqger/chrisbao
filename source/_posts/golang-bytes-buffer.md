@@ -11,9 +11,9 @@ These two packages are widely used in the Golang ecosystem especially works rela
 
 ### Demo application
 
-One good way to learn new programming knowledge is reviewing how to use it in read world applications. The following great demo application is from the open source book `Network Programming with Go by Jan Newmarch`.
+One good way to learn new programming knowledge is checking how to use it in real-world applications. The following great demo application is from the open source book `Network Programming with Go by Jan Newmarch`.
 
-For your convenience, I paste code here. This demo consists of two parts: client side and server side, two of which together form a simple directory browsing protocol. The client would be at the user end, talking to a server somewhere else. The client sends commands to the server side that allows you to list files in a directory and print the directory on the server. 
+For your convenience, I paste the code here. This demo consists of two parts: client side and server side, which together form a simple directory browsing protocol. The client would be at the user end, talking to a server somewhere else. The client sends commands to the server side that allows you to list files in a directory and print the directory on the server. 
 
 First is the client side program: 
 
@@ -313,7 +313,7 @@ Next, let's review how `Bufio` pacakge works. In our demo, it is used as followi
 
 Before we dive into the details about the demo code, let's first understand what is the purpose of `bufio` package. 
 
-First we need to understand when applications run IO operations like read or write data from or to files, network and database. It will trigger `system call` in the bottom level, which is heavy in the performance point of view.  
+First we need to understand that when applications run IO operations like read or write data from or to files, network and database. It will trigger `system call` in the bottom level, which is heavy in the performance point of view.  
 
 Buffer IO is a technique used to temporarily accumulate the results for an IO operation before transmitting it forward. This technique can increase the speed of a program by reducing the number of system calls. For example, in case you want to read data from disk byte by byte. Instead of directly reading each byte from the disk every time, with buffer IO technique, we can read a block of data into buffer once, then consumers can read data from the buffer in whatever way you want. Performance will be improved by reducing heavy system calls.
 
@@ -444,7 +444,9 @@ n, err := b.rd.Read(b.buf[b.w:])
 ```
 in our case is `os.Stdin`.
 
-Additionally, we can define our own customized `Reader` and pass it `bufio.NewReader` to understand the buffering IO technique better as following. 
+### Customized Reader
+
+To have a better understand about the buffering IO technique, we can define our own customized `Reader` and pass it `bufio.NewReader` as follows: 
 
 ```golang
 package main
@@ -485,5 +487,8 @@ func main() {
 }
 ```
 
+Please run the demo code above, observe the output and think about why it generates such result. 
+
+### Summary
 In this post, I only talked about `Reader` part of bufio, if you understand the behavior explained above clearly, it's easy to understand `Writer` quickly as well. 
 
