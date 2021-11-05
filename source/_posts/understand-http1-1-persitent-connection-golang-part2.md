@@ -1,21 +1,214 @@
 ---
-title: understand-http1-1-persitent-connection-golang-part2
+title: "Understand how HTTP/1.1 persistent connection works based on Golang: part two - concurrent requests"
 date: 2021-10-27 17:51:29
-tags:
+tags: HTTP/1.1, concurrent
 ---
 
-Outline:
-1. background: why we need persistent connection.
+### Background
 
-2. theory: how persistent connection works. In Both HTTP level and TCP level (keep alive for HTTP and TCP is not the same thing add a link to another post)
+In the [last post](https://baoqger.github.io/2021/10/25/understand-http1-1-persistent-connection-golang/), I show you how HTTP/1.1 persistent connection works in a simple demo app, which sends sequential requests.
 
-3. demo 1: sequence case
-   1. non persistent connection: demonstrated by netstat command show tcpdump command result 
-   2. persistent connection
-   3. no source code review, link to next post
-4. demo 2: concurrent case
-   1. default connection pool and show result with netstat result
-   2. a little bit source code to explain the Transport and connection pool
-   3. tunning connection pool and show result with netstat result
-   4. Wait_time state and port exhaustion
-   5. HTTP2
+We observe the underlying TCP connection behavior based on the network analysis tool: `netstat` and `tcpdump`.
+
+In this post, I will modify the demo app and make it send concurrent requests. In this way, we can have more understanding about HTTP/1.1's persistent connection.  
+
+### Concurrent requests
+
+The [demo code](https://github.com/baoqger/http-persistent-connection-golang/blob/master/concurrent/non-persistent-connection/non-persistent-connection-concurrent.go) goes as follows:  
+
+```golang
+package main
+
+import (
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"sync"
+	"time"
+)
+
+func startHTTPserver() {
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Duration(50) * time.Microsecond)
+		fmt.Fprintf(w, "Hello world")
+	})
+
+	go func() {
+		http.ListenAndServe(":8080", nil)
+	}()
+
+}
+
+func startHTTPRequest(index int, wg *sync.WaitGroup) {
+	counter := 0
+	for i := 0; i < 10; i++ {
+		resp, err := http.Get("http://localhost:8080/")
+		if err != nil {
+			panic(fmt.Sprintf("Error: %v", err))
+		}
+		io.Copy(ioutil.Discard, resp.Body) // fully read the response body
+		resp.Body.Close()                  // close the response body
+		log.Printf("HTTP request #%v in Goroutine #%v", counter, index)
+		counter += 1
+		time.Sleep(time.Duration(1) * time.Second)
+	}
+	wg.Done()
+}
+
+func main() {
+	startHTTPserver()
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go startHTTPRequest(i, &wg)
+	}
+	wg.Wait()
+}
+
+```
+We create 10 goroutines and each goroutine sends 10 sequential requests concurrently. 
+
+**Note**: In HTTP/1.1 protocol, concurrent requests will establish multiple TCP connections. That's the restriction of HTTP/1.1, the way to enhance it is using `HTTP/2` which can multiplex one TCP connection for multiple parallel HTTP connections. `HTTP/2` is not in the scope of this post. I will talk about it in another article. 
+
+Note that we fully read the response body and close it, based on the discussion in [last article](https://baoqger.github.io/2021/10/25/understand-http1-1-persistent-connection-golang/) the HTTP requests should work in persistent connection model. 
+
+Before we use the network tool to analyze the behavior, let's image how many TCP connections will be established. Since there are 10 concurrent goroutines, so 10 TCP connections should be established and all the HTTP requests should re-use these 10 TCP connection, right? That's our expectation. 
+
+Next, let's verify our expectation with `netstat` as follows: 
+
+<img src="/images/netstat-concurrent-non-persistent.png" title="tcp termination" width="600px" height="400px">
+
+it shows that the number of TCP connetions is much more than 10. The persistent connection oes not working as we expect. 
+
+After reading the source code of `net/http` package, I find the follow hints: 
+
+The `Client` is defined inside [client.go](https://golang.org/src/net/http/client.go), and `Transport` is one of the properties, what's that?  
+```golang
+type Client struct {
+	Transport RoundTripper
+
+	CheckRedirect func(req *Request, via []*Request) error
+
+	Jar CookieJar
+
+	Timeout time.Duration
+}
+```
+
+`Transport` is defined in [transport.go](https://golang.org/src/net/http/transport.go) like this: 
+
+```golang
+// DefaultTransport is the default implementation of Transport and is
+// used by DefaultClient. It establishes network connections as needed
+// and caches them for reuse by subsequent calls. It uses HTTP proxies
+// as directed by the $HTTP_PROXY and $NO_PROXY (or $http_proxy and
+// $no_proxy) environment variables.
+var DefaultTransport RoundTripper = &Transport{
+	Proxy: ProxyFromEnvironment,
+	DialContext: (&net.Dialer{
+		Timeout:   30 * time.Second,
+		KeepAlive: 30 * time.Second,
+	}).DialContext,
+	ForceAttemptHTTP2:     true,
+	MaxIdleConns:          100,
+	IdleConnTimeout:       90 * time.Second,
+	TLSHandshakeTimeout:   10 * time.Second,
+	ExpectContinueTimeout: 1 * time.Second,
+}
+
+// DefaultMaxIdleConnsPerHost is the default value of Transport's
+// MaxIdleConnsPerHost.
+const DefaultMaxIdleConnsPerHost = 2
+```
+
+`Transport` is type of `RoundTripper`, which is an interface representing the ability to execute a single HTTP transaction, obtaining the Response for a given Request. `RoundTripper` is a very important structure in `net/http` package, we'll review (and analyze) the source code in next article. In this article, we'll not discuss the details. 
+
+Note that there are two parameters of `Transport`: 
+- **MaxIdleConns**: controls the maximum number of idle (keep-alive) connections across all hosts.
+- **MaxIdleConnsPerHost**: controls the maximum idle (keep-alive) connections to keep per-host. If zero, DefaultMaxIdleConnsPerHost is used.
+
+By default, MaxIdleConns is **100** and MaxIdleConnsPerHost is **2**.
+
+In our demo case, ten goroutines send requests to the same host (which is localhost:8080). Although MaxIdleConns is 100, but **only 2 idle connections can be cached** for this host because MaxIdleConnsPerHost is 2. That's why you saw much more TCP connections are established. 
+
+Based on this analysis, let's refactor the code as follows: 
+
+```golang
+package main
+
+import (
+	"fmt"
+	"io"
+	"io/ioutil"
+	"log"
+	"net/http"
+	"sync"
+	"time"
+)
+
+var (
+	httpClient *http.Client
+)
+
+func init() {
+	httpClient = &http.Client{
+		Transport: &http.Transport{
+			MaxIdleConnsPerHost: 10, // set connection pool size for each host
+			MaxIdleConns:        100,
+		},
+	}
+}
+
+func startHTTPserver() {
+
+	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		time.Sleep(time.Duration(50) * time.Microsecond)
+		fmt.Fprintf(w, "Hello world")
+	})
+
+	go func() {
+		http.ListenAndServe(":8080", nil)
+	}()
+
+}
+
+func startHTTPRequest(index int, wg *sync.WaitGroup) {
+	counter := 0
+	for i := 0; i < 10; i++ {
+		resp, err := httpClient.Get("http://localhost:8080/")
+		if err != nil {
+			panic(fmt.Sprintf("Error: %v", err))
+		}
+		io.Copy(ioutil.Discard, resp.Body) // fully read the response body
+		resp.Body.Close()                  // close the response body
+		log.Printf("HTTP request #%v in Goroutine #%v", counter, index)
+		counter += 1
+		time.Sleep(time.Duration(1) * time.Second)
+	}
+	wg.Done()
+}
+
+func main() {
+	startHTTPserver()
+	var wg sync.WaitGroup
+	for i := 0; i < 10; i++ {
+		wg.Add(1)
+		go startHTTPRequest(i, &wg)
+	}
+	wg.Wait()
+}
+```
+This time, we don't use the default httpClient, instead create a customized client which sets MaxIdleConnsPerHost to be **10**. This means the size of connection pool is changed to 10 which can cache 10 idle TCP connections for each host.
+
+Verify the behavior with `netstat` again: 
+
+<img src="/images/netstat-concurrent-persistent.png" title="tcp termination" width="600px" height="400px">
+
+Now the result what we expect. 
+
+### Summary
+
+In this article, we discussed how to make HTTP/1.1 persistent connection work in a concurrent case by tunning the parameter for connetion pool. In next article, let's review the source code to study how to implement HTTP client.

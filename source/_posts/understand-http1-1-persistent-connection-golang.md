@@ -1,5 +1,5 @@
 ---
-title: "Understand how HTTP/1.1 persistent connection works based on Golang: part one" 
+title: "Understand how HTTP/1.1 persistent connection works based on Golang: part one - sequential requests" 
 date: 2021-10-25 11:11:28
 tags: HTTP/1.1, persistent connection, keep-alive, TCP, netstat, tcpdump, Golang, connection pool
 ---
