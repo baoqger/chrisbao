@@ -32,7 +32,7 @@ HTTP client's request starts from the application's call to `Get` method of `net
 
 <img src="/images/golang-http1-1-client-flow.png" title="golang client flow" width="800px" height="600px">
 
-First, the `Get` method calls Get method of `DefaultClient`, which is a global variable of type `Client`,  
+First, the public `Get` method calls Get method of `DefaultClient`, which is a global variable of type `Client`,  
 
 ```golang
 // Get method
@@ -82,6 +82,8 @@ req := &Request{
     // omit some code
 }
 ```
+Note that by default the HTTP protocol version is set to 1.1. If you want to send HTTP2 request, then you need other solutions, and I'll write about it in other articles.  
+
 Next, `Do` method is called which delegates the work to the private `do` method.  
 
 ```golang
@@ -92,7 +94,7 @@ func (c *Client) Do(req *Request) (*Response, error) {
 
 `do` method handles the [`HTTP redirect`](https://developer.mozilla.org/en-US/docs/Web/HTTP/Redirections) behavior, which is very interesting. But since the code block is too long, I'll not show its function body here. You can refer to the source code of it [here](https://cs.opensource.google/go/go/+/refs/tags/go1.17.3:src/net/http/client.go;drc=refs%2Ftags%2Fgo1.17.3;l=598).
 
-Note that by default the HTTP protocol version is set to 1.1. If you want to send HTTP2 request, then you need other solutions, and I'll write about it in other articles.  
+
 
 Next, `send` method of Client is called which goes as follows: 
 
@@ -119,7 +121,7 @@ func (c *Client) send(req *Request, deadline time.Time) (resp *Response, didTime
 
 It handles cookies for request, then call the private method `send` with there parameters.
 
-We already talked about the first parameter above. Let's take a look at the second parameter as follows: 
+We already talked about the first parameter above. Let's take a look at the second parameter `c.transport()` as follows: 
 
 ```golang
 func (c *Client) transport() RoundTripper {
@@ -206,3 +208,265 @@ type Transport struct {
 	ForceAttemptHTTP2 bool
 }
 ```
+I list the full content of `Transport` struct here, although it contains many fields, and many of them will not be discussed in this article.
+
+As we just mentioned, `Transport` is type of `RoundTripper` interface, it must implement the method `RoundTrip`, right? 
+
+You can find the `RoundTrip` method implementation of `Transport` struct type in **roundtrip.go** file as follows:
+
+```golang
+// RoundTrip method in roundtrip.go
+func (t *Transport) RoundTrip(req *Request) (*Response, error) {
+	return t.roundTrip(req)
+}
+```
+
+Note at the beginning, I thought this method should be included inside `transport.go` file, but in fact it is defined inside another file.  
+
+Let's back to the `send` method which takes `c.Transport` as the second argument:  
+
+```golang
+// send method in client.go 
+func send(ireq *Request, rt RoundTripper, deadline time.Time) (resp *Response, didTimeout func() bool, err error) {
+	req := ireq // req is either the original request, or a modified fork
+
+	if rt == nil {
+		req.closeBody()
+		return nil, alwaysFalse, errors.New("http: no Client.Transport or DefaultTransport")
+	}
+
+	if req.URL == nil {
+		req.closeBody()
+		return nil, alwaysFalse, errors.New("http: nil Request.URL")
+	}
+
+	if req.RequestURI != "" {
+		req.closeBody()
+		return nil, alwaysFalse, errors.New("http: Request.RequestURI can't be set in client requests")
+	}
+
+	// forkReq forks req into a shallow clone of ireq the first
+	// time it's called.
+	forkReq := func() {
+		if ireq == req {
+			req = new(Request)
+			*req = *ireq // shallow clone
+		}
+	}
+
+	// Most the callers of send (Get, Post, et al) don't need
+	// Headers, leaving it uninitialized. We guarantee to the
+	// Transport that this has been initialized, though.
+	if req.Header == nil {
+		forkReq()
+		req.Header = make(Header)
+	}
+
+	if u := req.URL.User; u != nil && req.Header.Get("Authorization") == "" {
+		username := u.Username()
+		password, _ := u.Password()
+		forkReq()
+		req.Header = cloneOrMakeHeader(ireq.Header)
+		req.Header.Set("Authorization", "Basic "+basicAuth(username, password))
+	}
+
+	if !deadline.IsZero() {
+		forkReq()
+	}
+	stopTimer, didTimeout := setRequestCancel(req, rt, deadline)
+
+	resp, err = rt.RoundTrip(req)
+	if err != nil {
+		stopTimer()
+		if resp != nil {
+			log.Printf("RoundTripper returned a response & error; ignoring response")
+		}
+		if tlsErr, ok := err.(tls.RecordHeaderError); ok {
+			// If we get a bad TLS record header, check to see if the
+			// response looks like HTTP and give a more helpful error.
+			// See golang.org/issue/11111.
+			if string(tlsErr.RecordHeader[:]) == "HTTP/" {
+				err = errors.New("http: server gave HTTP response to HTTPS client")
+			}
+		}
+		return nil, didTimeout, err
+	}
+	if resp == nil {
+		return nil, didTimeout, fmt.Errorf("http: RoundTripper implementation (%T) returned a nil *Response with a nil error", rt)
+	}
+	if resp.Body == nil {
+		// The documentation on the Body field says “The http Client and Transport
+		// guarantee that Body is always non-nil, even on responses without a body
+		// or responses with a zero-length body.” Unfortunately, we didn't document
+		// that same constraint for arbitrary RoundTripper implementations, and
+		// RoundTripper implementations in the wild (mostly in tests) assume that
+		// they can use a nil Body to mean an empty one (similar to Request.Body).
+		// (See https://golang.org/issue/38095.)
+		//
+		// If the ContentLength allows the Body to be empty, fill in an empty one
+		// here to ensure that it is non-nil.
+		if resp.ContentLength > 0 && req.Method != "HEAD" {
+			return nil, didTimeout, fmt.Errorf("http: RoundTripper implementation (%T) returned a *Response with content length %d but a nil Body", rt, resp.ContentLength)
+		}
+		resp.Body = ioutil.NopCloser(strings.NewReader(""))
+	}
+	if !deadline.IsZero() {
+		resp.Body = &cancelTimerBody{
+			stop:          stopTimer,
+			rc:            resp.Body,
+			reqDidTimeout: didTimeout,
+		}
+	}
+	return resp, nil, nil
+}
+```
+
+At **line 50** of `send` method above: 
+
+```golang
+resp, err = rt.RoundTrip(req)
+```
+
+`RoundTrip` method is called to send the request. Based on the comments in the source code, you can understand it in the following way:
+
+- RoundTripper is an interface representing the ability to execute a single HTTP transaction, obtaining the Response for a given Request.
+
+Next, let's go to `roundTrip` method of `Transport`: 
+
+```golang
+// roundTrip method in transport.go, which is called by RoundTrip method internally 
+
+// roundTrip implements a RoundTripper over HTTP.
+func (t *Transport) roundTrip(req *Request) (*Response, error) {
+	t.nextProtoOnce.Do(t.onceSetNextProtoDefaults)
+	ctx := req.Context()
+	trace := httptrace.ContextClientTrace(ctx)
+
+	if req.URL == nil {
+		req.closeBody()
+		return nil, errors.New("http: nil Request.URL")
+	}
+	if req.Header == nil {
+		req.closeBody()
+		return nil, errors.New("http: nil Request.Header")
+	}
+	scheme := req.URL.Scheme
+	isHTTP := scheme == "http" || scheme == "https"
+	if isHTTP {
+		for k, vv := range req.Header {
+			if !httpguts.ValidHeaderFieldName(k) {
+				req.closeBody()
+				return nil, fmt.Errorf("net/http: invalid header field name %q", k)
+			}
+			for _, v := range vv {
+				if !httpguts.ValidHeaderFieldValue(v) {
+					req.closeBody()
+					return nil, fmt.Errorf("net/http: invalid header field value %q for key %v", v, k)
+				}
+			}
+		}
+	}
+
+	origReq := req
+	cancelKey := cancelKey{origReq}
+	req = setupRewindBody(req)
+
+	if altRT := t.alternateRoundTripper(req); altRT != nil {
+		if resp, err := altRT.RoundTrip(req); err != ErrSkipAltProtocol {
+			return resp, err
+		}
+		var err error
+		req, err = rewindBody(req)
+		if err != nil {
+			return nil, err
+		}
+	}
+	if !isHTTP {
+		req.closeBody()
+		return nil, badStringError("unsupported protocol scheme", scheme)
+	}
+	if req.Method != "" && !validMethod(req.Method) {
+		req.closeBody()
+		return nil, fmt.Errorf("net/http: invalid method %q", req.Method)
+	}
+	if req.URL.Host == "" {
+		req.closeBody()
+		return nil, errors.New("http: no Host in request URL")
+	}
+
+	for {
+		select {
+		case <-ctx.Done():
+			req.closeBody()
+			return nil, ctx.Err()
+		default:
+		}
+
+		// treq gets modified by roundTrip, so we need to recreate for each retry.
+		treq := &transportRequest{Request: req, trace: trace, cancelKey: cancelKey}
+		cm, err := t.connectMethodForRequest(treq)
+		if err != nil {
+			req.closeBody()
+			return nil, err
+		}
+
+		// Get the cached or newly-created connection to either the
+		// host (for http or https), the http proxy, or the http proxy
+		// pre-CONNECTed to https server. In any case, we'll be ready
+		// to send it requests.
+		pconn, err := t.getConn(treq, cm)
+		if err != nil {
+			t.setReqCanceler(cancelKey, nil)
+			req.closeBody()
+			return nil, err
+		}
+
+		var resp *Response
+		if pconn.alt != nil {
+			// HTTP/2 path.
+			t.setReqCanceler(cancelKey, nil) // not cancelable with CancelRequest
+			resp, err = pconn.alt.RoundTrip(req)
+		} else {
+			resp, err = pconn.roundTrip(treq)
+		}
+		if err == nil {
+			resp.Request = origReq
+			return resp, nil
+		}
+
+		// Failed. Clean up and determine whether to retry.
+		if http2isNoCachedConnError(err) {
+			if t.removeIdleConn(pconn) {
+				t.decConnsPerHost(pconn.cacheKey)
+			}
+		} else if !pconn.shouldRetryRequest(req, err) {
+			// Issue 16465: return underlying net.Conn.Read error from peek,
+			// as we've historically done.
+			if e, ok := err.(transportReadFromServerError); ok {
+				err = e.err
+			}
+			return nil, err
+		}
+		testHookRoundTripRetried()
+
+		// Rewind the body if we're able to.
+		req, err = rewindBody(req)
+		if err != nil {
+			return nil, err
+		}
+	}
+}
+```
+
+There are three key points:
+- at **line 70**, a new variable of type `transportRequest`, which embeds `Request`, is created.  
+- at **line 81**, `getConn` method is called, which implements the cached `connection pool` to support the `persistent connection` mode. Of course, if no cached connection is available, a new connection will be created and added to the connection pool. I will explain this behavior in detail next section. 
+- from **line 89** to **line 95**, `pconn.roundTrip` is called. The name of variable `pconn` is self-explaining which means it is type of `persistConn`. 
+
+Next, let's understand how `getConn` works. The logic can be summarized as the following diagram:
+
+<img src="/images/golang-http1-1-getconn.png" title="getconn" width="800px" height="600px">
+
+
+
+
