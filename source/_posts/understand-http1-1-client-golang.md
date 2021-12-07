@@ -6,25 +6,23 @@ tags: HTTP protocol, Golang, TCP, socket
 
 ### Background
 
-In this article I will write about one topic: how to implement the HTTP protocol. In fact, I keep planning to write about this topic for a long time. In my previous articles, I already wrote several articles about HTTP protocol:
+In this article, I'll write about one topic: how to implement the HTTP protocol. I keep planning to write about this topic for a long time. In my previous articles, I already wrote several articles about HTTP protocol:
 
 -  [How to write a Golang HTTP server with Linux system calls](https://baoqger.github.io/2021/07/31/how-to-implement-simple-http-server-golang/)
 -  [Understand how HTTP/1.1 persistent connection works based on Golang: part one - sequential requests](https://baoqger.github.io/2021/10/25/understand-http1-1-persistent-connection-golang/)
 -  [Understand how HTTP/1.1 persistent connection works based on Golang: part two - concurrent requests](https://baoqger.github.io/2021/10/27/understand-http1-1-persitent-connection-golang-part2/)
 
-I recommended you to read these articles above before this one. 
+I recommend you to read these articles above before this one. 
 
-As you know, HTTP protocol is in the application layer which is the closest one to the end user in the protocol stack. 
+As you know, HTTP protocol is in the application layer, which is the closest one to the end-user in the protocol stack. 
 
-<img src="/images/osi_model.png" title="network" width="400px" height="300px">
+So relatively speaking, HTTP protocol is not as mysterious as other protocols in the lower layers of this stack. Software engineers use HTTP every day and take it for granted. Have you ever thought about how we can implement a fully functional HTTP protocol library? 
 
-So relatively speaking, HTTP protocol is not as mysterious as other protocols in the lower layers of this stack. As software engineer we use HTTP everyday and take it for granted. Have you ever think about how to implement a fully functional HTTP protocol library? 
-
-It turns out to be a very complex and big work in terms of software engineering. Frankly speaking, I can't work it out by myself in a short period of time. So in this article, we'll try to understand how to do it by investigating Golang `net/http` package as an example. We'll read a lot of source code and draw diagrams to help your understand the source code.
+It turns out to be a very complex and big work in terms of software engineering. Frankly speaking, I can't work it out by myself in a short period. So in this article, we'll try to understand how to do it by investigating Golang `net/http` package as an example. We'll read a lot of source code and draw diagrams to help your understanding of the source code.
 
 **Note** HTTP protocol itself has evolved a lot from `HTTP1.1` to `HTTP2` and `HTTP3`, not to mention `HTTPS`. In this article, we'll focus on the mechanism of `HTTP1.1`, but what you learned here can help you understand other new versions of HTTP protocol. 
 
-**Note** HTTP protocol is on the basis of client-server model. This article will focus on the client side or the HTTP request part. For the HTTP server part, I'll write another article in next step. 
+**Note** HTTP protocol is on the basis of client-server model. This article will focus on the client-side. For the HTTP server part, I'll write another article next. 
 
 ### Main workflow of http.Client
 
@@ -84,7 +82,7 @@ req := &Request{
 ```
 Note that by default the HTTP protocol version is set to 1.1. If you want to send HTTP2 request, then you need other solutions, and I'll write about it in other articles.  
 
-Next, `Do` method is called which delegates the work to the private `do` method.  
+Next, `Do` method is called, which delegates the work to the private `do` method.  
 
 ```golang
 func (c *Client) Do(req *Request) (*Response, error) {
@@ -119,7 +117,7 @@ func (c *Client) send(req *Request, deadline time.Time) (resp *Response, didTime
 }
 ```
 
-It handles cookies for request, then call the private method `send` with there parameters.
+It handles cookies for the request, then calls the private method `send` with three parameters.
 
 We already talked about the first parameter above. Let's take a look at the second parameter `c.transport()` as follows: 
 
@@ -221,7 +219,7 @@ func (t *Transport) RoundTrip(req *Request) (*Response, error) {
 }
 ```
 
-Note at the beginning, I thought this method should be included inside `transport.go` file, but in fact it is defined inside another file.  
+In the beginning, I thought this method should be included inside `transport.go` file, but it is defined inside another file.  
 
 Let's back to the `send` method which takes `c.Transport` as the second argument:  
 
@@ -463,10 +461,10 @@ There are three key points:
 - at **line 81**, `getConn` method is called, which implements the cached `connection pool` to support the `persistent connection` mode. Of course, if no cached connection is available, a new connection will be created and added to the connection pool. I will explain this behavior in detail next section. 
 - from **line 89** to **line 95**, `pconn.roundTrip` is called. The name of variable `pconn` is self-explaining which means it is type of `persistConn`. 
 
-Next, let's understand how `getConn` works. The logic can be summarized as the following diagram:
+`transportRequest` is passed as parameter to `getConn` method, which returns `pconn`. `pconn.roundTrip` is called to execute the HTTP request. we have covered all the steps in the above workflow diagram. 
+### Summary
 
-<img src="/images/golang-http1-1-getconn.png" title="getconn" width="800px" height="600px">
-
+In this first article of this series, we talked about the workflow of sending an HTTP request step by step. And I'll discuss how to send the HTTP message to the TCP stack in the second article.   
 
 
 

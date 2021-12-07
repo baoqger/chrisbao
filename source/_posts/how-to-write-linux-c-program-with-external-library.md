@@ -189,9 +189,7 @@ The first two methods can work well based on my test, but personally I recommend
 
 To register a new library, we need to use command `ldconfig` which configures dynamic linker run-time bindings. 
 
-`/etc/ld.so.conf`
-
-`ldconfig` will search `.so` library files in some specific directories, and the search result will be updated to dynamic linker's cache file `/etc/ld.so.cache`. 
+How does `ldconfig` work? It will search `.so` library files in some specific directories, and the search result will be updated to dynamic linker's cache file `/etc/ld.so.cache`. 
 
 And one of the directory `ldconfig` will look at is `/etc/ld.so.conf`. In our Ubuntu system, it's in fact a file as follows:
 
