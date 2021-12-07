@@ -1,5 +1,5 @@
 ---
-title: How  HTTP1.1 protocol is implemented in Golang net/http package
+title: "How  HTTP1.1 protocol is implemented in Golang net/http package: part one - request workflow"
 date: 2021-12-01 10:02:34
 tags: HTTP protocol, Golang, TCP, socket
 ---
