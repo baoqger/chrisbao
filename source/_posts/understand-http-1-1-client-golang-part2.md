@@ -579,9 +579,7 @@ func (pc *persistConn) roundTrip(req *transportRequest) (resp *Response, err err
 }
 ```
 
-At line 48, you can find it clearly. 
-
-In [last article](https://baoqger.github.io/2021/12/01/understand-http1-1-client-golang/), you can find that `pconn.roundTrip` is the end of the HTTP request workflow. Now we had put all parts together. Great. 
+At line 48, you can find it clearly. In [last article](https://baoqger.github.io/2021/12/01/understand-http1-1-client-golang/), you can see that `pconn.roundTrip` is the end of the HTTP request workflow. Now we had put all parts together. Great. 
 
 ### Summary
 
