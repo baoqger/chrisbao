@@ -1,6 +1,6 @@
 ---
 title: "How HTTPS works: part one - TLS handshake"
-date: 2021-12-22 11:04:58
+date: 2019-2-22 11:04:58
 tags: HTTPS, TLS handshake, SSL/TLS
 ---
 
@@ -24,9 +24,11 @@ As the first article of this series, I will talk about how to establish an `HTTP
 
 In my previous article, I wrote about [`TCP three way handshake`](https://baoqger.github.io/2019/07/14/why-tcp-four-way-handshake/) to establish a TCP connection. In `HTTP` protocol, that's all it needs to do. But for `HTTPS`, after the `TCP handshake` it has to do `TLS handshake` as well. 
 
-<img src="/images/https-tls-handshake.png" title="tls handshake" width="800px" height="600px">
+<img src="/images/https-tls-handshake.png" title="tls handshake" width="600px" height="400px">
 
-outline
+**Note** to understand each detail of the above processing, you need have some prerequisite knowledges such as `encryption/decryption`, `hash function`, `public key`, `private key`, `digital certificate` and so on.  
+
+If you don't know, don't worry. After reading this series of article, you can say you already had it under your belt. 
 
 TLS handshake （只能先general 介绍，细节的坑太多）
 
