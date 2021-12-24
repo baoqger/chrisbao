@@ -6,7 +6,7 @@ tags: HTTPS, TLS handshake, SSL/TLS
 
 ### Background
 
-Nowdays everybody knows about the lock icon in the browser's address bar indicating that the session is protected by `HTTPS`. In this series articles, I'll have an research on how HTTPS works. 
+Nowdays everybody knows about the lock icon in the browser's address bar indicating that the session is protected by `HTTPS`. In this series articles, I'll show you how HTTPS works based on my research. 
 
 Simply speaking, `HTTPS = HTTP + SSL/TLS`. 
 
