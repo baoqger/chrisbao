@@ -44,6 +44,8 @@ In my previous article, I wrote about [`TCP three way handshake`](https://baoqge
 
 - **HTTP message encryption**: Until the last step, the handshake is completed. The client and server will use the agreed `session key` to encrypt the following HTTP messages and continue the communication (since both sides use the same key, this is called `symmetric encryption`). 
 
+That's all about `TLS handshake` process. 
+
 ### Summary
 
 As the first article of this series, I go through the entire process of TLS handshake. In future articles, I'll show you the mysteries of each part. 
