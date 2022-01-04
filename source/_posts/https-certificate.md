@@ -1,7 +1,7 @@
 ---
-title: https-certificate
+title: "How HTTPS works: part two - why we need public key and certificate"
 date: 2019-2-25 16:00:47
-tags:
+tags: public key, man-in-the-middle, certificate
 ---
 
 ### Background
@@ -14,85 +14,35 @@ Let' continue exploring the PKI. This article focuses on understanding the `cert
 
 [Last post](https://organicprogrammer.com/2019/02/22/https-handshake/) examined the `TLS handshake`. What is remarkable in this process is both `symmetric encryption` and `asymmetric enecrption` are used. 
 
-`symmetric encryption` and `asymmetric enecrption` are the two broad categories of cryptographic algorithms. 
+`symmetric encryption` and `asymmetric encryption` are the two broad categories of cryptographic algorithms. 
 
-Symmetric key encryption uses the same key on both sides of the communication channel to encrypt or decrpt data. In `HTTPS` case, the client and server agree upon new keys to use for symmetric encryption, called **session key**. The HTTP messages are encrypted by this symmetric session key. 
+Symmetric key encryption uses the same key on both sides of the communication channel to encrypt or decrypt data. In `HTTPS` case, the client and server agree upon new keys to use for symmetric encryption, called **session key**. The HTTP messages are encrypted by this symmetric session key. 
 
-It has the advantage of being very fast with a low overhead. In this way it can minimize the performance impact `TLS` will have on the network communications. 
+It has the advantage of being very fast with low overhead. In this way, it can minimize the performance impact `TLS` will have on the network communications. 
 
 But the real challenge of symmetric encryption is **how to keep the key private and secure!** The client and server must exchange keys without letting an interested eavesdropper see them. This seems like a **chicken and egg problem**; you can't establish keys over an insecure channel, and you can't establish a secure channel without keys. Right? 
 
-This key management turns out to be the most difficult part of encryption operations and is where asymmetric or  public-key cryptography enters. 
+This key management turns out to be the most difficult part of encryption operations and is where asymmetric or public-key cryptography enters. 
 
 Simply speaking, **a secure channel is firstly established with asymmetric cryptography and then the symmetric session key is exchanged through this secure channel**. 
 
-**Note**: Cryptography is a complex topic which is not in the scope of this series of articles. You can find tons of documents on the internet about it for deeper understanding. You can regard it as a block box and ignore the details. This doesn't influence your understanding about `HTTPS` in high level 
+**Note**: Cryptography is a complex topic, which isn't in the scope of this series of articles. You can find [tons](https://opensource.com/article/19/6/cryptography-basics-openssl-part-2) of documents on the internet about it for deeper understanding. You can regard it as a block box and ignore the details. This doesn't influence your understanding of `HTTPS` in high level 
 
-### Why we need certificate
+### Why do we need certificates
 
-Now we know public-key cryptography is needed to establish secure channel. Can we directly transmit the public key from servers to clients? Why we need a certificate as the carrier to pass the public key? 
+Now we know public-key cryptography is needed to establish a secure channel. Can we directly transmit the public key from servers to clients? Why do we need a certificate as the carrier to pass the public key? Can we exchange the public key without certificates as follows: 
 
-The ultimate question is how you(as the client) know that the public key can be trusted as authentic?
+<img src="/images/https_wo_certificate.png" title="public key without certificate" width="600px" height="400px">
 
+But the ultimate question is how you(as the client) know that the public key can be trusted as authentic? Assume that an attacker can not only view traffic, but also can intercept and modify it. Then the attacker can carry out `man-in-the-middle` attack as follows:  
 
+<img src="/images/https_mitm.png" title="man in the middle attack" width="800px" height="600px">
 
-应该是这个思路：
-1 tls握手的过程证明，同时需要对称和非对称加密。这个握手过程本质是通过证书传递public key. 
-对称加密, 需要非对称加密来提供channel
+The attacker can replace the server's public key with its own and send it to the client. The client doesn't feel anything wrong and keeps using this public key as normal. The client encrypts the session key with the forged public key(the one from attackers) and sends it out. The attacker decrypts the session key with its private key, re-encrypt the session key with the server's public key, and sends it to the server. As normal, the server decrypts the session key and agrees on it. But this session key is in the attacker's hand too. The attacker can decrypt all the subsequent network traffic. 
 
+The problem here is that the client blindly **trusts** that the public key belongs to the server. That's the reason why we need the `certificates` to establish trust between clients and servers.
 
-2 灵魂发问 can we directly transmit the public key from servers to clients? 
-But, how do you(as the client) know that the public key can be trusted as authentic?
-引出certifcate
-
-3 certificate是secure的，解决了几个方面的问题，点到为止，具体看文献 https://opensource.com/article/19/6/cryptography-basics-openssl-part-1。
-
-4 certificate的内容
-PEM format
-用openssl convert to plain text
-大致分析它的内容
-
-５　数值签名（值得单独一篇文章）
-
-ｃｈａｉｎ图
-搞几个ｃｅｒｔｉｆｉｃａｔｅ放到ｇｉｓｔ上
-解释ｃｈａｉｎ的逻辑
-
-压住下面几个关键点会显得更专业：
-PKI,
-X.509
-Trusted chain
-PEM format
-digital signature
-
-一些不易察觉的知识点：
-certificate chain 和root certificate分别在哪里？
-为什么需要chain
-
-金句：
-A certificate is a standard way to wrap the server's public key, along with its identity and a signature by a trusted authority.
-
-Understanding the X.509 certificate, which is fully defined in RFC 5280, is key to making sense of those errors. Unfortunately, these certificates have a well deserved reputation of being opaque and difficult to manage. With the multitude of formats used to encode them, this reputation is rightly deserved.
-
-The certificate encodes two very important pieces of information: the server's public key and a digital signature that can be used to confirm the certificate's authenticity.  
+### Summary
+In this article, we understand the importance of public-key cryptography and certificates. In the next article, we will take a deep look at the certificate.  
 
 
-
-
-
-
-
-A hash, often using the SHA256 algorithm, is a digital fingerprint(🤔有数字指纹的说法吗？) of the data. If you change a single bit in the data, the hash will change. By computing a hash over the DER-encoded public key section of the certificate and then signing the hash with its own private key(思考🤔sign the hash? 就是加密的意思吧), the CA is giving its stamp of approval on the certifcate. This signed hash value is the signature appended to the certificate. 
-
-TLS handshake （只能先general 介绍，细节的坑太多）
-
-从上面引出一些问题：
-
-1. tls同时用了对称和非对称加密(handshake用了非对称，session的过程用了对称加密)
-2. 为什么对message加密要采用对称加密算法？是因为性能吗？
-3. 不能直接传递public key => 所以下一个问题就是certificate的理解
-4. 解析certificate的内容结构
-5. 什么是digital signature? 什么是sign the hash
-6. certifcate能解决secure的哪些问题？
-7. 下面就是certificate chain的问题？为什么需要trust chain?
-8. 手动(用openssl)verify一个certificate
