@@ -6,13 +6,13 @@ tags: certificate, digital signature, hashing
 
 ### Background
 
-In the [last article](https://organicprogrammer.com/2019/02/25/https-certificate/), we examined the importance of certificates, which can prevent us from the man-in-the-middle attacks. But we didn't explain the mechanics of certificates, and that will be the following articles' focus. In this article, let's first examine how the `TLS certificate` looks like and what kind of information it contains? 
+In the [last article](https://organicprogrammer.com/2019/02/25/https-certificate/), we examined the importance of certificates, which prevent us from the man-in-the-middle attacks. But we did not explain the mechanics of certificates, and it will be the focus of the following articles. In this article, let us first examine how the `TLS certificate` looks like and what kind of information it contains? 
 
 ### Anatomy of certificate
 
-The official name of `SSL/TLS certificate` is [`X.509 certificate`](https://en.wikipedia.org/wiki/X.509). Before we can examine the certificate's content, we must get it. We can do this with `openssl`. `openssl` is a popular tool in the network security field. In the following articles, we'll use it a lot. For the use of `openssl`, you can refer to this online [document](https://www.feistyduck.com/books/openssl-cookbook/). 
+The official name of `SSL/TLS certificate` is [`X.509 certificate`](https://en.wikipedia.org/wiki/X.509). Before we can examine the content of the certificate, we must get it. We can do this with `openssl`. `openssl` is a popular tool in the network security field. In the following articles, we will use it a lot. For the use of `openssl`, you can refer to this online [document](https://www.feistyduck.com/books/openssl-cookbook/). 
 
-Let's pull the certificate from google.com domain as follows: 
+Let us pull the certificate from google.com domain as follows: 
 
 ```shell
 openssl s_client -showcerts -connect google.com:443
@@ -70,13 +70,13 @@ issuer=C = US, O = Google Trust Services LLC, CN = GTS CA 1C3
 
 Note: if you want to take a look at the full content of the above output, please refer to this online [gist file](https://gist.github.com/baoqger/d1d5792d17c4b260ca186d9d2651066b)
 
-Based on the format of the output, you can figure out that the content between `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----` markes is a certificate. 
+Based on the format of the output, you can figure out that the content between `-----BEGIN CERTIFICATE-----` and `-----END CERTIFICATE-----` markers is a certificate. 
 
-Another remarkable point is that the server returns not one, but three certificates. These associated certificates forms a `certificate chain`. I will examine it in future articles. In the current article, let's focus on the certificate itself. 
+Another remarkable point is that the server returns not one, but three certificates. These associated certificates form a `certificate chain`. I will examine it in future articles. In the current post, let us focus on the certificate itself. 
 
-As shown above, the default format of certificate is `PEM(Privacy Enhanced Mail)` which is a Base64 encoded binary format. We can convert it to human-readable format with `openssl`.
+As shown above, the default format of the certificate is `PEM(Privacy Enhanced Mail)`. PEM is a Base64 encoded binary format. We can convert it to a human-readable format with `openssl`.
 
-First, let's extract the google.com server certificate into a file named **google_com.pem**. Remember to include the `BEGIN` and `END` markers, but nothing more. You can refer to this [file](https://gist.github.com/baoqger/8c854336118737db2cb55997ca7888c9).
+First, let us extract the google.com server certificate into a file named **google_com.pem**. Remember to include the `BEGIN` and `END` markers, but nothing more. You can refer to this [file](https://gist.github.com/baoqger/8c854336118737db2cb55997ca7888c9).
 
 Then, run the following openssl command: 
 
@@ -164,20 +164,14 @@ Certificate:
          14:22:3f:2a:90:a5:e4:9b:26:df:33:15:4b:d2:5c:f7:89:8e:
          f7:6a:c4:a6
 ```
+The certificate contains many elements. They are specified using a syntax
+referred to as `ASN.1(Abstract Syntax Notation)`. As you can see, the certificate consists of two parts: **Data** and **Signature Algorithm**. The **Data** part contains the identity information about this server certificate. And the second part is the `digital signature` of this certificate. I'll highlight the following elements:
 
+- **Issuer**: identifies who issues this certificate, also known as CA(certificate authority).
+- **Subject**: identifies to whom the certificate is issued. In the case of the server certificate, the `Subject` should be the organization that owns the server. But in the certificate chain, the `Issuer` of the server certificate is the `Subject` of the intermediate certificate. I'll examine this relationship in detail in the following article. 
+- **Subject Public Key Info**: the server's public key. As we mentioned above, we created the certificate just to send the public key to the client. 
+- **Signature Algorithm**: refers to the element at the bottom of the certificate. The **sha256WithRSAEncryption** part denotes the `hash function` and `encryption algorithm` used to `sign the certificate`. In the above case, the server uses `sha256` as the hash function and `RSA` as the encryption algorithm. And the following block contains the signed hash of X.509 certificate data, called `digital signature`. The digital signature is the key information in certificates to establish trust between clients and servers. I'll explain how a digital certificate works in the next article. 
 
-思路：书接上文，certificate可以防止man-in-the-middle攻击。那么它是如何做到的呢？其中的奥妙是什么呢？
-得用后面多篇文章来解释这个原理。
-第一篇文章介绍certificate的内容(通过openssl获取,并解析它的内容)。引出digital signature
+### Summary
 
-第二篇介绍 digital signature
-
-(中间有个certificates chain的概念，应该放到哪里🤔)
-
-第三篇介绍 手动验证signature
-
-第四篇介绍 trusts/certificates chain
-
-金句：
-The certificate encodes two very important pieces of information: the server's public key and a digital signature that can be used to confirm the certificate's authenticity.  
-
+This article examines the information contained inside certificates using the tool `openssl`. We highlight some critical elements, and in the following article let us take a deep look at `digital signature`.
