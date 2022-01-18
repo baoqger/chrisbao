@@ -13,39 +13,53 @@ The concept of `digital signature` can be illustrated as follows:
 
 <img src="/images/https-signature-process.png" title="digital signature process" width="600px" height="400px">
 
-When the server sends a message to the client, how can we prevent the attackers from eavesdropping on the message? The server can attach its signature to it and the client can accept the message only if the verification of the certificate passed. So this process can be devided into two parts: `sign the message to get the digital signature` and `verify the digital signature`.
+When the server sends a message to the client, how can we prevent the attackers from eavesdropping on the message? The server can attach its signature to it, and the client can accept the message only if the verification of the certificate passes. So this process can be divided into two parts: `sign the message to get the digital signature` and `verify the digital signature`.
 
 - **Sign the message**: means `hash` the message and `encrypt` the hash with the server's private key. The encrypted hash is called `digital signature`. 
 
-- **Verify the signature**: means `decrypt` the signature with the server's public key to get the hash, `re-compute` another hash of the message and compare identity of two hashes.
+- **Verify the signature**: means `decrypt` the signature with the server's public key to get the hash, `re-compute` another hash of the message, and compare the identity of two hashes.
 
-What can we benefit from signing and verifing the digital signature? To verify the digital signature is to confirm two things: 
+What can we benefit from signing and verifying the digital signature? To verify the digital signature is to confirm two things: 
 
 - **Integrity**: the message has not changed since the signature was attached because it is based on a  `cryptographic hash` of the message. 
 
-- **Authenticity**: the signature belongs to the person who alone has access to the private key. 
+- **Authentication**: the signature belongs to the person who alone has access to the private key. 
 
 Information security has other attributes, but integrity and authentication are the two traits you must know.
 
-**Hash is irreversible**
+### Secrets behind digital signature
 
-Unlike cryptographic algorithms, though, message digests do not have to be reversible – in fact, this irreversibility is the whole point.
+As mentioned in the above section, the digital signature can prove the integrity of the message and the authenticity of the message's owner. To understand how it works, you must understand the following two facts: 
 
-The goal of MD5 or any secure hashing algorithm is to reduce the arbitrarily sized input into an n-bit hash in such way that it is very unlikely that two messages, regardless of length or content, produce identical hashes – that is, collide – and that is impossible to specifically reverse engineer such a collision.
+- **Hash is irreversible**
 
-For md5, n = 128 bits. This means that there are 2^128 possible MD5 hashes. Although the input space is vastly larger than this, 2^128 makes it highly unlikely that two messages will share the same MD5 hash. More importantly, it should be impossible, assuming that MD5 hashes are evenly, randomly distributed, for an attacker to compute a useful message that collides with another by way of brute force. 
+In the previous articles, we explained that cryptography is a two-way algorithm. You can `encrypt` the plaintext to the ciphertext and `decrypt` the ciphertext back to the plaintext. It means the cryptographic algorithm is reversible. 
 
-**the private key can also be used to prove identity**
-At first glance, this doesn’t sound very useful. The public key, after all, is
-public. It’s freely shared with anybody and everybody. Therefore, if a value is
-encrypted with the private key, it can be decrypted by anybody and everybody as
-well. However, the nature of public/private keypairs is such that it’s also impossible — or, to be technically precise, mathematically infeasible — for anybody
-except the holder of the private key to generate something that can be decrypted
-using the public key. After all, the encryptor must find a number c such that
-ce
-%n  m for some arbitrary m. By definition, c  md satisfies this condition and
-it is believed to be computationally infeasible to find another such number c.
-As a result, the private key can also be used to prove identity. 
+Different from cryptographic algorithms, **A hash is irreversible!**. This irreversibility is the whole point.
+
+The goal of any cryptographic hashing algorithm is to reduce the arbitrarily sized input into a fixed-sized hash. The cryptographic hashing algorithm should guarantee that no two different messages can produce an identical hash. That is `collide`. 
+
+In this way, it is impossible for attackers to reverse engineer such a `collision`. 
+
+<img src="/images/https-signature-hash.png" title="Hash is irreversible" width="600px" height="400px">
+
+The attacker intercepts the message and changes it. Then the verification process of the signature on the client-side can not pass since the re-computed hashing can not match the original hashing. 
+
+I will write about how to implement a hash function in the future. In this article, you can ignore the details. Just remember that hashing is irreversible. 
+
+**The private key prove identity**
+
+The attack shown above does not pass the verification because the signature and the forged message do not match. Then this time, the attacker compute a new hash based on the forged message and sign the hash with his private key. Can this attack work? 
+
+<img src="/images/https-signature-key-identity.png" title="Hash is irreversible" width="800px" height="600px">
+
+The short answer is No. 
+
+When the client gets the digital signature, the first is to `decrypt` it. The decryption breaks for this new attack because the forged signature is signed with the attacker's private key instead of the server's private key. 
+
+**It’s impossible for anybody except the owner of the private key to generate something that can be decrypted using the public key.** This is the nature of public-key cryptography. I will write other articles to explain it mathematically in the future.  
+
+In a word, the private key can prove identity. 
 
 思路：书接上文，digital signature。
 

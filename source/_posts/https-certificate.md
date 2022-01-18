@@ -12,7 +12,7 @@ Let' continue exploring the PKI. This article focuses on understanding the `cert
 
 ### Symmetric plus Asymmetric
 
-[Last post](https://organicprogrammer.com/2019/02/22/https-handshake/) examined the `TLS handshake`. What is remarkable in this process is both `symmetric encryption` and `asymmetric enecrption` are used. 
+[Last post](https://organicprogrammer.com/2019/02/22/https-handshake/) examined the `TLS handshake`. What is remarkable in this process is both `symmetric encryption` and `asymmetric encryption` are used. 
 
 `symmetric encryption` and `asymmetric encryption` are the two broad categories of cryptographic algorithms. 
 
