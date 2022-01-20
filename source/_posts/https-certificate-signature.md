@@ -21,9 +21,9 @@ When the server sends a message to the client, how can we prevent the attackers 
 
 What can we benefit from signing and verifying the digital signature? To verify the digital signature is to confirm two things: 
 
-- **Integrity**: the message has not changed since the signature was attached because it is based on a  `cryptographic hash` of the message. 
+- **Message Integrity**: the message has not changed since the signature was attached because it is based on a  `cryptographic hash` of the message. 
 
-- **Authentication**: the signature belongs to the person who alone has access to the private key. 
+- **Proof of Origin**: the signature belongs to the person who alone has access to the private key. The recipient of the message must be sure of the origin of the message.
 
 Information security has other attributes, but integrity and authentication are the two traits you must know.
 
