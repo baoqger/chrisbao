@@ -17,7 +17,7 @@ When the server sends a message to the client, how can we prevent the attackers 
 
 - **Sign the message**: means `hash` the message and `encrypt` the hash with the server's private key. The encrypted hash is called `digital signature`. 
 
-- **Verify the signature**: means `decrypt` the signature with the server's public key to get the hash, `re-compute` another hash of the message, and compare the identity of two hashes.
+- **Verify the signature**: means `decrypt` the signature with the server's public key to get the hash, `re-compute` the other hash of the message, and compare the identity of two hashes.
 
 What can we benefit from signing and verifying the digital signature? To verify the digital signature is to confirm two things: 
 
@@ -59,31 +59,28 @@ When the client gets the digital signature, the first is to `decrypt` it. The de
 
 **It’s impossible for anybody except the owner of the private key to generate something that can be decrypted using the public key.** This is the nature of public-key cryptography. I will write other articles to explain it mathematically in the future.  
 
-In a word, the private key can prove identity. 
+In a word, the private key can prove identity.
 
-思路：书接上文，digital signature。
+### How does signature make certificate secure?
 
-首先要介绍digital signuture的sign和verify技术实现。通过配图解释。
+The digital signature is not designed only for TLS certificates, and it has other applications, which is not the focus of my article. The important thing is to understand how to apply digital signature in the PKI framework and how it makes certificates more secure. 
 
-通过对实现过程的具体解释，就能理解它能实现的secure效果: integrity和authenticity. 
-To verify the digital signature is to confirm two things: first, that the vouch-for artifact has not changed since the signature was attached because it is based, in part, on a cryptographic hash of the document. Second, that the signature belongs to the person who alone has access to the private key in a pair. 
+The key is that **the certificate associates the public key with the server you are connecting to**. As we see in [last](https://organicprogrammer.com/2019/03/02/https-certificate-anatomy/) article, the certificate must contain some information about the identity of the server, such as the domain name of the server. For example, the `Subject` property of the [certificate](https://gist.github.com/baoqger/79923d4f92b166bb914aa700721d6a0b) we examined in the last article
 
-技术点解释：其间要大致讲清的关键点：什么是sign the message? hash和encryption的区别?(hash是不可逆的)。public-key本身就有验证身份的能力（数学原理带来的）。digital signature的广泛应用举例子。
+```
+Subject: CN = *.google.com
+```
 
-上面是general的digital signature情况。需要放到x.509 certificate的场景中具体讨论下，它是如何让certificate安全的
-再通过两个实例理解：第一attackers forge certificate的内容；第二attackers replace with its own certificate
+And the digital signature is `signed based on all of the information instead of only public key`. It can prevent man-in-the-middle attack in the two following cases:
 
-另外，signature是基于certificate的整体信息得到的，不只是public key, 这一点也要说明。否则不能避免上面的第二种攻击。因为之前的文章说了public key不能直接exchange，需要certificate来包裹一层。所以最开始我以为signature就是基于public key算出来的
+- The attacker intercepts the server's certificate and changes the public key or any other information, the hash code in the signature does not match the hash code of the content of the forged certificate, and the client rejects it. It is `Message Integrity` mentioned above. 
 
+- The attacker can obtain a certificate signed by the trusted CA by pretending as a legitimate business. When the client requests a certificate from the server, the attacker can replace it with his own. The validation on the client-side can not pass. Although the attacker's certificate is signed by a trusted CA, the domain name(or other server information) does not match the expected one. It is `Proof of Origin` mentioned above. 
 
-第二篇介绍 digital signature
+So far, I hope you can understand (roughly) the beauty of this Internet security framework. 
 
-第三篇介绍 手动验证signature
+### Summary
 
-第四篇介绍 trusts/certificates chain
-
-
-extension:
-certificate除了能够防止man-in-the-middle attack, 还有其他3个功能(包括revoke等). 
+In this article, I examined how a digital signature works. You see how to sign a signature and how to verify it. Digital signature and certificate are the most abstract part of the PKI framework. So in the following article, let me illustrate the whole process by manually going through the certificate verification process step by step. We will use `openssl` to examine the result in each step.
 
 

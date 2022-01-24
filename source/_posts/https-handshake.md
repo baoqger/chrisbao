@@ -6,11 +6,11 @@ tags: HTTPS, TLS handshake, SSL/TLS
 
 ### Background
 
-At present, everybody knows about the lock icon in the browser's address bar indicating that the session is protected by `HTTPS`. In this series of articles, I'll show you how HTTPS works based on my research. 
+At present, everybody knows about the lock icon in the browser's address bar indicating that the session is protected by `HTTPS`.In this series of articles, I'll show you how HTTPS works based on my research. 
 
 Simply speaking, `HTTPS = HTTP + SSL/TLS`. 
 
-As we know in the `HTTP` protocol, the client communicates with the server by transmitting the message over the network. But the message is in the original format known as plaintext. The bad guys (attackers) can easily eavesdrop on the message. That's the reason why we need `SSL/TLS`. 
+In the `HTTP` protocol, the client communicates with the server by transmitting the message over the network. But the message is in the original format known as plaintext. The bad guys (attackers) can easily eavesdrop on the message. That's the reason why we need `SSL/TLS`. 
 
 There are tons of [articles](https://www.globalsign.com/en/blog/ssl-vs-tls-difference) online describing the relationship between SSL and TLS. You can regard TLS as the modern and advanced version of SSL. By conversion, we generally put them together as the name of the network security protocol. 
 
