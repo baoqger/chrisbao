@@ -13,17 +13,17 @@ The concept of `digital signature` can be illustrated as follows:
 
 <img src="/images/https-signature-process.png" title="digital signature process" width="600px" height="400px">
 
-When the server sends a message to the client, how can we prevent the attackers from eavesdropping on the message? The server can attach its signature to it, and the client can accept the message only if the verification of the certificate passes. So this process can be divided into two parts: `sign the message to get the digital signature` and `verify the digital signature`.
+When the server sends a message to the client, how can we prevent the attackers from eavesdropping on the message? The solution is that the server attaches its signature to the message, and the client accepts the message only if the verification of the certificate passes. So this process can be divided into two parts: `sign the message to get the digital signature` and `verify the digital signature`.
 
 - **Sign the message**: means `hash` the message and `encrypt` the hash with the server's private key. The encrypted hash is called `digital signature`. 
 
-- **Verify the signature**: means `decrypt` the signature with the server's public key to get the hash, `re-compute` the other hash of the message, and compare the identity of two hashes.
+- **Verify the signature**: means `decrypt` the signature with the server's public key to get the hash, `re-compute` the hash of the message again, and compare the identity of two hashes.
 
 What can we benefit from signing and verifying the digital signature? To verify the digital signature is to confirm two things: 
 
 - **Message Integrity**: the message has not changed since the signature was attached because it is based on a  `cryptographic hash` of the message. 
 
-- **Proof of Origin**: the signature belongs to the person who alone has access to the private key. The recipient of the message must be sure of the origin of the message.
+- **Proof of Origin**: the signature belongs to the person who alone has access to the private key. In this way, the recipient of the message can be sure of the origin of the message.
 
 Information security has other attributes, but integrity and authentication are the two traits you must know.
 
@@ -55,7 +55,7 @@ The attack shown above does not pass the verification because the signature and 
 
 The short answer is No. 
 
-When the client gets the digital signature, the first is to `decrypt` it. The decryption breaks for this new attack because the forged signature is signed with the attacker's private key instead of the server's private key. 
+When the client gets the digital signature, the first step is to `decrypt` it. The decryption breaks for this new attack because the forged signature is signed with the attacker's private key instead of the server's private key. 
 
 **It’s impossible for anybody except the owner of the private key to generate something that can be decrypted using the public key.** This is the nature of public-key cryptography. I will write other articles to explain it mathematically in the future.  
 
