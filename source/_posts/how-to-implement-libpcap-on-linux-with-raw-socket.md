@@ -1,0 +1,40 @@
+---
+title: how-to-implement-libpcap-on-linux-with-raw-socket
+date: 2022-02-22 10:21:14
+tags:
+---
+
+资料：
+https://www.linuxjournal.com/article/4659
+
+libpcap这个library实现了跨平台的packet capture, 但是我们只关注linux. 如何在linux 系统下实现跟libpcap一样的（或者类似的）packet capture功能呢？
+
+第一，libpcap的实现是基于AF_PACKET这个类型的socket的。这也是我们的简单实现的基础: AF_PACKET socket. 
+
+In recent versions of the Linux kernel(post-2.0 release), a new protocol family has been introduced, named PF_PACKET. This family allows an application to send and receive packets dealing directly with the network card driver, thus avoiding the usual protocol stack-handling. That is, any packet sent through the socket will be directly passed to the Ethernet interface, and any packet received through the interface will be directly passed to the application. 
+
+第二，libpcap有一个功能是：promiscuous mode。这个是如何实现的呢？
+
+The PF_PACKET family allows an application to retrieve data packets as they are received at the network card level, but still does not allow it to read packets that are not addressed to its host. As we have seen before, this is due to the network card discarding all the packets that do not contain its own MAC address - an operation mode called non-promiscuous, which basically means that each network card is minding tis own business and reading only the frames directed to it. 
+
+We need to enable a network card to be set in promiscuous mode to pick up all the packets it sees. 
+
+To set a network card to promiscuous mode, all we have to do is issue a particular `ioctl()` system call to an open socket on that card. 
+
+第三, libpcap是支持各种过滤的，按照协议类型，按照ip地址等等调节过滤，这个如何实现呢？实现在哪个level呢？
+
+The optimal solution to this problem is to put the filter as early as possible in the packet-processing chain(it starts at the network driver level and ends at the application level). The linux kernel allows us to put a filter, called an LPF, directly inside the PF_PACKET protocol processing routines, which are run shortly after the network card reception interrupt has been served. The filter decides which packets shall be relayed to the application and which ones should be discarded. 
+
+In order to be as flexible as possible, and not to limit the programmer to a set of predefined conditions, the packet-filtering engine is actually implemented as a state machine running a user-defined program. The program is written in a specific pseudo-machine code language called BPF (for Berkeley packet filter), inspried by an old paper. BPF actually looks like a real assembly language with a couple of registers and a few instructions to load and store values, perform arithmetic operations and conditionally branch. 
+
+the filter code is run on each packet to be examined, and the memory space into which the BPF processor operates are the bytes containing the packet data. The result of the filter is an integer number that specifies how many bytes of the packet the socket should pass to the application level. 
+
+filter(LPF)可以BPF来描述，BPF本身是一个类似汇编语言一样的东西，是纯kernel层的东西。
+
+实现的方法是：把filter写入`sock_filter`结构，然后传给`setsockopt`.
+
+libpcap做的事情是支持将用户以string定义的filter转化为符合BPF标准的描述。
+
+Libpcap library is an OS-independent wrapper for the BPF engine. When used on Linux machines, BPF functions are carried out by the Linux packet filter. 
+
+One of the most useful functions provided by the libpcap is pcap_compile(), which takes a string containing a logic expression as input and output the BPF filter code. 
