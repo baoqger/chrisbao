@@ -140,4 +140,7 @@ The re-computed hash is `66efbe4cea76272c76cee8fa297c1bf70c41f8e049c7e0e4d23c965
 
 In this article, we go through the verification process of SSL/TLS certificates step by step manually. I have to admit that the concepts of digital signatures and certificates are too abstract to understand, especially in the details. I hope the experiment, which carries out with certificates from the real world, can help you do that.  
 
+### Reference
+[x509 Certificate Manual Signature Verification](https://linuxctl.com/2017/02/x509-certificate-manual-signature-verification/) written by George Bolo.
+
 
