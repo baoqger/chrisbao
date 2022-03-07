@@ -4,6 +4,29 @@ date: 2022-02-22 10:21:14
 tags:
 ---
 
+思路：
+
+背景：libpcap是一个很强大的库，它是如何实现的呢？如何在linux下实现类似的功能呢？
+
+内容：
+
+1 packet socket的介绍。socket是kernel networking stack对application开放的连接点。把连接点开在transport layer上，就是TCP socket, 通过它application可以得到TCP segment。类似的如果把连接点开放在ethernet layer上，就是Packet socket, 通过它application可以到ethernet frame.
+
+上面这种理解可以通过 socket()系统调用的参数验证。
+
+稍微写一点 path of a packet in the linux kernel stack, 今后再扩展.
+
+2 bind to device
+network device interface list,
+ifconfig output输出分析
+loopback大致介绍
+
+3 promiscuous mode
+hub和switch区别介绍
+
+4 Linux packet filter. 
+这里解释清楚如何使用就行了(1.从user mode向kernel model发了一段程序，这段程序会作用在每一个packet上。为什么这样做呢？因为灵活，避免了hardcode的各种rule。2通过tcpdump -dd生成filter code)。深入分析看得再来一篇。
+
 资料：
 https://www.linuxjournal.com/article/4659
 
