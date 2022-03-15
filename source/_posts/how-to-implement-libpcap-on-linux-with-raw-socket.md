@@ -6,19 +6,19 @@ tags: packet sniffer, socket, PF_PACKET
 
 ### Background
 
-When we refer to network packet sniffer, some famous and popular tools like: `tcpdump` come to your mind . In my previous articles, I once shown you how to use it to capture network packet. But have you ever think about writing a packet sniffer from scratch? In this article, let's do it. After reading this article, you will find that it is not as difficult as you may think. 
+When we refer to network packet sniffer, some famous and popular tools come to your mind, like `tcpdump`. I have shown you how to capture network packets in my previous articles. But have you ever thought about writing a packet sniffer from scratch? In this article, let us do it. After reading this article, you can find that it is not as difficult as you think. 
 
 ### Introduction
 
-First, let's review how `tcpdump` is implemented. As a powerful command-line tool, it is built on top of the library `libpcap`. So the power of `tcpdump` is original from `libpcap`, which is based on the great research result from Berkeley, in detail you can refer to [this paper](https://www.tcpdump.org/papers/bpf-usenix93.pdf).
+Firstly, we need to review how `tcpdump` is implemented. According to the official [document](https://www.tcpdump.org/), `tcpdump` is built on the library `libpcap`, which is developed based on the remarkable research result from Berkeley, in details you can refer to [this paper](https://www.tcpdump.org/papers/bpf-usenix93.pdf).
 
-As you know, different operating systems have different internal implementations about network stacks. `libpcap` covers all of these differences and provides system-independent interface for user-level packet capture. In my article, I want to focus on `Linux` platform, so how `libpcap` works on Linux system? According to some [documents](https://stackoverflow.com/questions/21200009/capturing-performance-with-pcap-vs-raw-socket), it turns out that libpcap uses the `PF_PACKET` socket to capture packets on an network interface.
+As you know, different operating systems have different internal implementations of network stacks. `libpcap` covers all of these differences and provides the system-independent interface for user-level packet capture. I want to focus on the Linux platform, so how does `libpcap` work on the Linux system? According to some [documents](https://stackoverflow.com/questions/21200009/capturing-performance-with-pcap-vs-raw-socket), it turns out that libpcap uses the `PF_PACKET` socket to capture packets on a network interface.
 
-So the next question is what is `PF_PACKET` socket? 
+So the next question is: what the `PF_PACKET` socket is? 
 
 ### PF_PACKET socket
 
-In my previous [article](https://organicprogrammer.com/2021/07/31/how-to-implement-simple-http-server-golang/), we mentioned that the socket interface is really TCP/IP’s window on the world. In most modern systems incorporating TCP/IP, the socket interface is the only way that applications make use of the TCP/IP suite of protocols. 
+In my previous [article](https://organicprogrammer.com/2021/07/31/how-to-implement-simple-http-server-golang/), we mentioned that the socket interface is TCP/IP’s window on the world. In most modern systems incorporating TCP/IP, the socket interface is the only way applications can use the TCP/IP suite of protocols. 
 
 It is correct. This time, let's dig deeper about `socket` by examining the system call executed when we create a new socket: 
 
@@ -29,24 +29,24 @@ It is correct. This time, let's dig deeper about `socket` by examining the syste
 int socket(int domain, int type, int protocol);
 ```
 
-When you want to create a socket with the above system call, you have to specify which domain (or protocol family) you are going to use with that socket as the first argument. The most commonly used family is `PF_INET`, which is for communications based on IPv4 protocols (when you create a TCP server, you use this family). Moreover, you have to specify a type for your socket as the second argument. And the possible values depend on the family you specified. For example, when dealing with the `PF_INET` family, the values for type include `SOCK_STREAM`(for TCP) and `SOCK_DGRAM`(for UDP). For other detail information about socket system call, you can refer to socket(3) man page. 
+When you want to create a socket with the above system call, you have to specify which domain (or protocol family) you want to use with that socket as the first argument. The most commonly used family is `PF_INET`, which is for communications based on IPv4 protocols (when you create a TCP server, you use this family). Moreover, you have to specify a type for your socket as the second argument. And the possible values depend on the family you specified. For example, when dealing with the `PF_INET` family, the values for type include `SOCK_STREAM`(for TCP) and `SOCK_DGRAM`(for UDP). For other detailed information about the socket system call, you can refer to the socket(3) man page. 
 
-You can find one potential value for `domain` argument as follows:
+You can find one potential value for the `domain` argument as follows:
 
 ```
  AF_PACKET    Low-level packet interface
 ```
-**Note**: `AF_PACKET` and `PF_PACKET` is the same thing. In the history, it is firstly called `PF_PACKET` and then renamed to `AF_PACKET`. `PF` means protocol families and `AF` means address families. In this article, we'll use `PF_PACKET`. 
+**Note**: `AF_PACKET` and `PF_PACKET` are same. It is called `PF_PACKET` in history and then renamed  `AF_PACKET` later. `PF` means protocol families, and `AF` means address families. In this article, I use `PF_PACKET`. 
 
-Different from `PF_INET` socket, which can give you TCP segment. By `PF_PACKET` socket, you can get raw `Ethernet` frame which bypasses the usual upper layer handling of TCP/IP stack. It might sound a little bit crazy, right? But, that is, any packet received will be directly passed to the application. 
+Different from `PF_INET` socket, which can give you TCP segment. By `PF_PACKET` socket, you can get the raw `Ethernet` frame which bypasses the usual upper layer handling of TCP/IP stack. It might sound a little bit crazy. But, that is, any packet received will be directly passed to the application. 
 
-Just to understand `PF_INET` socket better, let us go deeper and roughly examine the path of a received packet from netowrk interface to the application level. 
+For a better understanding of `PF_PACKET` socket, let us go deeper and roughly examine the path of a received packet from the network interface to the application level. 
 
-As shown in the image above, when the network interface card(NIC) receive a packet, it will be handled by the driver. The driver maintains a strcuture called `ring buffer` and write the packet to kernel memory (the memory is pre-allocated with ring buffer)  with direct memory access(DMA). The packet is stored inside a structure called **`sk_buff`**(one of the most important structures related to kernel network subsystem).   
+(As shown in the image above) When the network interface card(NIC) receives a packet, it is handled by the driver. The driver maintains a structure called `ring buffer` internally. And write the packet to kernel memory (the memory is pre-allocated with ring buffer)  with direct memory access(DMA). The packet is placed inside a structure called **`sk_buff`**(one of the most important structures related to kernel network subsystem).   
 
-After entering the kernel space, the packet goes through protocol stack handling layer by layer, such as `IP processing`and `TCP/UDP processing`. And then the packet goes into applications via socket interface. You already understand this familiar path very well.
+After entering the kernel space, the packet goes through protocol stack handling layer by layer, such as `IP processing` and `TCP/UDP processing`. And the packet goes into applications via the socket interface. You already understand this familiar path very well.
 
-But for `PF_PACKET` socket, the packet in `sk_buff` will be cloned, then it skips the protocol stacks and directly goes to the application. **Note** the clone operation is needed, because one copy is consumed by the `PF_PACKET` socket, and the other one goes through the usual protocol stacks.
+But for the `PF_PACKET` socket, the packet in `sk_buff` is cloned, then it skips the protocol stacks and directly goes to the application. The kernel needs the clone operation, because one copy is consumed by the `PF_PACKET` socket, and the other one goes through the usual protocol stacks.
 
 思路：
 
