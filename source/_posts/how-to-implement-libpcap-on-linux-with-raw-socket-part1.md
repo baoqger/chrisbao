@@ -1,5 +1,5 @@
 ---
-title: "Write a Linux packet sniffer from scratch: part one"
+title: "Write a Linux packet sniffer from scratch: part one- PF_PACKET socket and promiscuous mode"
 date: 2022-02-22 10:21:14
 tags: packet sniffer, socket, PF_PACKET
 ---
