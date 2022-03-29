@@ -7,10 +7,10 @@ tags:
 几个问题：
 1. BPF的历史: BSD -> Linux BPF -> Linux eBPF. 最后简单说一下eBPF的功能 (performance analysis and troubleshooting, js之于浏览器)。
 
-2. BPF的作用位置 -> 性能问题 -> kernel中
+2. BPF的作用位置 -> 性能问题 -> kernel中 <= 回答where的问题，这个filter应该加在哪里
 before clone. source code verify
 
-3. 从user mode注入kernel model的方法
+3. 从user mode注入kernel model的方法 <= 回答how的问题，这个filter应该怎么加 <= BPF设计成一种virtual machine的好处
 setsockopt system call -> kernel code
 sniffer implemention code(show filter code)
 
@@ -19,7 +19,9 @@ sniffer implemention code(show filter code)
 5. 如何理解in kernel virtual machine/engine这个概念。
 核心在这个函数sk_run_filter. state machine
 
+6. JIT 
 
+BPF对于kernel就像js对于浏览器
 
 In 1992, Steven McCanne and Van Jacobson from Lawrence Berkeley Laboratory proposed a solution for BSD Unix systems for minimizing unwanted network packet copies to user space by implementing an in-kernel packet filter known as Berkeley Packet Filter (BPF). In 1997, it was introduced in Linux kernel version 2.1.75.
 
