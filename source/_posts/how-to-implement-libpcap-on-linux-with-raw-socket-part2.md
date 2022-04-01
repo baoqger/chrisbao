@@ -51,9 +51,9 @@ static int packet_create(struct net *net, struct socket *sock, int protocol)
 	}
 }
 ```
-`packet_create` function is triggered to handle the socket creation when the application calls the `socket` system call. In lines 11 and 14, it attaches the hook function to the socket. 
+`packet_create` function handles the socket creation when the application calls the `socket` system call. In lines 11 and 14, it attaches the hook function to the socket. The hook function executes when the packet is received.
 
-The following code block shows the hook function `packet_rcv`, which executes when the packet is received. 
+The following code block shows the hook function `packet_rcv`:  
 
 ```c
 /* hook function packet_rcv is triggered, when the packet is received */
@@ -70,6 +70,12 @@ static int packet_rcv(struct sk_buff *skb, struct net_device *dev, struct packet
 }
 ```
 `packet_rcv` function calls `run_filter`, which is just the BPF logic part(Currently, you can regard it as a black box. In the next section, we'll examine the details). Based on the return value of `run_filter` the packet can be filtered out or put into the queue. 
+
+So far, you can understand BPF(or the packet filtering) is working inside kernel space. But the packet sniffer is a user-space application. The next question is how to link the filtering rules in user space to the filtering handler in kernel space. 
+
+To answer this question, we have to understand BPF itself. It's right time to understand this great piece of work. 
+
+### BPF machine
 
 
 ```c
