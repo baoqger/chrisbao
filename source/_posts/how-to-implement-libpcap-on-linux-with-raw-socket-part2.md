@@ -77,6 +77,7 @@ To answer this question, we have to understand BPF itself. It's right time to un
 
 ### BPF machine
 
+As I mentioned above, `BPF` was introduced in this original [paper](https://www.tcpdump.org/papers/bpf-usenix93.pdf) written by the researchers from Berkeley. I strongly recommend you to read this great paper based on my own experience. At the beginning, I feel scary to read it, so I read other related documents and try to understand BPF. But most documents only cover one portion of the entire system, so it's very hard to piece all the information together. Finally I read the original paper, and connect all parts together. **As the saying goes, sometimes taking time is actually a shortcut.**
 
 ```c
 static inline unsigned int run_filter(struct sk_buff *skb, struct sock *sk,
