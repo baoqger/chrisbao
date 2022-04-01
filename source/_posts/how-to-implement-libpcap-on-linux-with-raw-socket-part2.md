@@ -71,6 +71,7 @@ static int packet_rcv(struct sk_buff *skb, struct net_device *dev, struct packet
 ```
 `packet_rcv` function calls `run_filter`, which is just the BPF logic part(Currently, you can regard it as a black box. In the next section, we'll examine the details). Based on the return value of `run_filter` the packet can be filtered out or put into the queue. 
 
+
 ```c
 static inline unsigned int run_filter(struct sk_buff *skb, struct sock *sk,
 				      unsigned int res)

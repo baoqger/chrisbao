@@ -20,10 +20,9 @@ So the next question is: what the `PF_PACKET` socket is?
 
 In my previous [article](https://organicprogrammer.com/2021/07/31/how-to-implement-simple-http-server-golang/), we mentioned that the socket interface is TCP/IP’s window on the world. In most modern systems incorporating TCP/IP, the socket interface is the only way applications can use the TCP/IP suite of protocols. 
 
-It is correct. This time, let's dig deeper about `socket` by examining the system call executed when we create a new socket: 
-
 <img src="/images/pf-packet-socket.png" title="PF_PACKET socket" width="400px" height="300px">
 
+It is correct. This time, let's dig deeper about `socket` by examining the system call executed when we create a new socket: 
 
 ```c
 int socket(int domain, int type, int protocol);
@@ -48,9 +47,9 @@ After entering the kernel space, the packet goes through protocol stack handling
 
 But for the `PF_PACKET` socket, the packet in `sk_buff` is cloned, then it skips the protocol stacks and directly goes to the application. The kernel needs the clone operation, because one copy is consumed by the `PF_PACKET` socket, and the other one goes through the usual protocol stacks.
 
-In future articles, I will demonstrate more about Linux kernel network internals.
+In future articles, I'll demonstrate more about Linux kernel network internals.
 
-Next step, let us see how to implement it at the code level. For brevity, I only show the essential code block. You can refer to this Github [repo](https://github.com/baoqger/raw-socket-packet-capture-/blob/master/raw_socket.c) in detail.  
+Next step, let us see how to create a `PF_PACKET` socket at the code level. For brevity, I omit some code and only show the essential part. You can refer to this Github [repo](https://github.com/baoqger/raw-socket-packet-capture-/blob/master/raw_socket.c) in detail.  
 
 ```cpp
     if ((sock = socket(PF_PACKET, SOCK_RAW, htons(ETH_P_IP))) < 0) {
@@ -63,7 +62,7 @@ Please ensure to include the system header files: `<sys/socket.h> <sys/types.h>`
 
 ### Bind to one network interface
 
-Before we add additional settings, the sniffer captures all the packets received on all the network devices. So the next step, let us try to bind the sniffer to a specific network device. 
+Without the additional settings, the sniffer captures all the packets received on all the network devices. Next step, let us try to bind the sniffer to a specific network device. 
 
 Firstly, you can use `ifconfig` command to list all the available `network interfaces` on your machines. The network interface is a software interface to the networking hardware. 
 
@@ -93,6 +92,8 @@ Let's bind the sniffer to `eth0` as follows:
     }
 ```
 We do it by calling the `setsockopt` system call. I leave the detailed usage of it to you. 
+
+Now the sniffer only captures network packets received on the specified network card. 
 
 ### Non-promiscuous and promiscuous mode
 
@@ -127,6 +128,7 @@ To set a network interface to promiscuous mode, all we have to do is issue the `
 - The second argument is a device-dependent request code. You can see we called `ioctl` twice. The first call uses request code *SIOC**G**IFFLAGS* to get flags, and the second call uses request code *SIOC**S**IFFLAGS* to set flags. Do not be fooled by these two constant values, which are spelled alike.
 - The third argument is for returning information to the requesting process.  
 
+Now the sniffer can retrieve all the data packets received on the network card, no matter to which host the packets are addressed.
 ### Summary
 
 This article examined what `PF_PACKET` socket is, how it works and why the application can get raw Ethernet packets. Furthermore, we discussed how to bind the sniffer to one specific network interface and how can make the sniffer work in the promiscuous mode. The next article will examine how to implement the packet filter functionality, which is very useful to a network sniffer. 
