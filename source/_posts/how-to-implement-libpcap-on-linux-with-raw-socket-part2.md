@@ -25,7 +25,8 @@ The first question to answer is where should we place the filter. The last artic
 
 <img src="/images/pf-packet-socket.png" title="PF_PACKET socket" width="400px" height="300px">
 
-The best solution to this question is to put the filter as early as possible in the path. Since copying a large amount of data from kernel space to the user space produces a huge overhead, which can influence the system performance a lot. So BPF is a kernel feature. The filter should be triggered immediately when a packet is received at the network interface. Let's verify this behavior by examining the kernel source code as follows (**Note** the kernel code shown in this article is based on version 2.6, which contains the `cBPF` implementation.): 
+The best solution to this question is to put the filter as early as possible in the path. Since copying a large amount of data from kernel space to the user space produces a huge overhead, which can influence the system performance a lot. So BPF is a kernel feature. The filter should be triggered immediately when a packet is received at the network interface.As the original BPF [paper](https://www.tcpdump.org/papers/bpf-usenix93.pdf) said **To minimize memory traffic, the major bottleneck in most modern system, the packet should be filtered 'in place' (e.g., where the network interface DMA engine put it) rather than copied to some other kernel buffer before filtering.**
+Let's verify this behavior by examining the kernel source code as follows (**Note** the kernel code shown in this article is based on version 2.6, which contains the `cBPF` implementation.): 
 
 ```c
 /* source code file of net/packet/af_packet.c */
@@ -77,7 +78,34 @@ To answer this question, we have to understand BPF itself. It's right time to un
 
 ### BPF machine
 
-As I mentioned above, `BPF` was introduced in this original [paper](https://www.tcpdump.org/papers/bpf-usenix93.pdf) written by the researchers from Berkeley. I strongly recommend you to read this great paper based on my own experience. At the beginning, I feel scary to read it, so I read other related documents and try to understand BPF. But most documents only cover one portion of the entire system, so it's very hard to piece all the information together. Finally I read the original paper, and connect all parts together. **As the saying goes, sometimes taking time is actually a shortcut.**
+As I mentioned above, `BPF` was introduced in this original [paper](https://www.tcpdump.org/papers/bpf-usenix93.pdf) written by researchers from Berkeley. I strongly recommend you read this great paper based on my own experience. In the beginning, I felt crazy to read it, so I read other related documents and tried to understand BPF. But most documents only cover one portion of the entire system, so it's very difficult to piece all the information together. Finally, I read the original paper and connected all parts together. **As the saying goes, sometimes taking time is actually a shortcut.**
+
+A packet filter is simply a boolean valued function on a packet. If the value of the function is true the kernel copies the packet for the application; if it is false the packet is ignored. 
+
+In order to be as flexible as possible, and not to limit the application to a set of predefined conditions, the `BPF` is actually implemented as a `register based virtual machine` (for the difference between stack based and register based virtual machine, you can refer to [this article](http://troubles.md/wasm-is-not-a-stack-machine/)) running a user-defined program.  
+
+You can imagine `BPF` as a `virtual CPU`, which consists of an `accumulator`, an `index register(x)`, a scratch memory store, and an implicit `program counter`. If you're not familiar with these concepts, I add some simple illustrations as follows:
+
+- An `accumulator` is a type of register included in a CPU. It acts as a temporary storage location which holds an intermediate value in mathmatical and logical calculations. For example, in the operation "1+2+3", the accumulator would hold the value 1, then the value 3, then the value 6. The benefit of an accumulator is that it does not need to be explicitly referenced, which conserves data in the operation statement. 
+- An `index register` in a computer's CPU is a processor register or assigned memory location used for modifying operand addresses during the run of a program. 
+- A `program counter` is a CPU register in the computer processor which has the address of the next instruction to be executed from memory. 
+
+In BPF machine, the accumulator is used for arithmetic operations, while the index register provides offsets into the packet or the scratch memory areas.  
+
+Same as the physical CPU, the `BPF` provides a small set of arithmetic, logical and jump instructions as follows, these instructions run on the BPF virtual machine(or CPU): 
+
+<img src="/images/bpf-instructions.png" title="BPF instructions" width="400px" height="300px">
+
+The first column *opcodes* lists the BPF instructions, which are written in an assembly language style. For example, **ld**, **ldh** and **ldb** means copy the indicated value into the `accumulator`. **ldx** means copy the indicated value into the `index register`. **jeq** means jump to the target instruction if the `accumulator` equals to the indicated value. **ret** means return the indicated value. You can check the functionality of the instructions set in detail from the paper. 
+
+This kind of assembly-like style is more readable for humans. But when we develop an application (like the sniffer written in this article), we use binary code directly as the BPF instruction. This kind of binary format is called `BPF Bytecode`. I'll examine how to convert assembly-like language to Bytecode in the next section. 
+
+The second column *addr modes* lists the addressing modes allowed for each instruction. The semantics of the addressing modes are listed in the following table: 
+
+<img src="/images/address-mode.png" title="BPF instructions address mode" width="400px" height="300px">
+
+For instance, **[k]** means the data at byte offset k in the packet. **#k** means the literal value stored in k. For other address modes you can read the paper in detail.  
+
 
 ```c
 static inline unsigned int run_filter(struct sk_buff *skb, struct sock *sk,
