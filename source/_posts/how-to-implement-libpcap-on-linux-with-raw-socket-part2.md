@@ -80,18 +80,21 @@ To answer this question, we have to understand BPF itself. It's right time to un
 
 As I mentioned above, `BPF` was introduced in this original [paper](https://www.tcpdump.org/papers/bpf-usenix93.pdf) written by researchers from Berkeley. I strongly recommend you read this great paper based on my own experience. In the beginning, I felt crazy to read it, so I read other related documents and tried to understand BPF. But most documents only cover one portion of the entire system, so it is difficult to piece all the information together. Finally, I read the original paper and connected all parts together. **As the saying goes, sometimes taking time is actually a shortcut.**
 
+##### Virtual CPU
+
 A packet filter is simply a boolean-valued function on a packet. If the value of the function is true the kernel copies the packet for the application; if it is false the packet is ignored. 
 
 In order to be as flexible as possible and not to limit the application to a set of predefined conditions, the `BPF` is actually implemented as a `register-based virtual machine` (for the difference between stack-based and register-based virtual machine, you can refer to [this article](http://troubles.md/wasm-is-not-a-stack-machine/)) running a user-defined program.  
 
 You can regard the `BPF` as a `virtual CPU`. And it consists of an `accumulator`, an `index register(x)`, a scratch memory store, and an implicit `program counter`. If you're not familiar with these concepts, I add some simple illustrations as follows:
 
-- An `accumulator` is a type of register included in a CPU. It acts as a temporary storage location which holds an intermediate value in mathematical and logical calculations. For example, in the operation of "1+2+3", the accumulator would hold the value 1, then the value 3, then the value 6. The benefit of an accumulator is that it does not need to be explicitly referenced.
+- An `accumulator` is a type of register included in a CPU. It acts as a temporary storage location holding an intermediate value in mathematical and logical calculations. For example, in the operation of "1+2+3", the accumulator would hold the value 1, then the value 3, then the value 6. The benefit of an accumulator is that it does not need to be explicitly referenced.
 - An `index register` in a computer's CPU is a processor register or assigned memory location used for modifying operand addresses during the run of a program. 
 - A `program counter` is a CPU register in the computer processor which has the address of the next instruction to be executed from memory. 
 
 In the BPF machine, the accumulator is used for arithmetic operations, while the index register provides offsets into the packet or the scratch memory areas.  
 
+##### Instructions set and addressing mode
 Same as the physical CPU, the `BPF` provides a small set of arithmetic, logical and jump instructions as follows, these instructions run on the BPF virtual machine(or CPU): 
 
 <img src="/images/bpf-instructions.png" title="BPF instructions" width="400px" height="300px">
@@ -104,8 +107,31 @@ The second column *addr modes* lists the addressing modes allowed for each instr
 
 <img src="/images/address-mode.png" title="BPF instructions address mode" width="400px" height="300px">
 
-For instance, **[k]** means the data at byte offset k in the packet. **#k** means the literal value stored in k. For other address modes, you can read the paper in detail.  
+For instance, **[k]** means the data at byte offset k in the packet. **#k** means the literal value stored in k. You can read the paper in detail to check the meaning of other address modes.  
 
+##### Example BPF program
+
+Now let's try to understand the following small BPF program based on the knowledge above: 
+
+```asm
+(000) ldh      [12]
+(001) jeq      #0x800           jt 2    jf 3
+(002) ret      #262144
+(003) ret      #0
+```
+
+The first instruction **ldh** loads a half-word(16-bit) value into the accumulator from offset 12 in the Ethernet packet. According to the Ethernet frame format shown below, the value is just the `Ethernet type` field. The Ethernet type is used to indicate which protocol is encapsulated in the frame's payload (for example,  0x0806 for ARP, **0x0800** for IPv4, and 0x86DD for IPv6).
+
+<img src="/images/ethernet-frame-format.png" title="Ethernet frame fromat" width="600px" height="400px">
+
+The second instruction **jeq** compares the accumulator (currently stores `Ethernet type` field) to `0x800`(stands for IPv4). If the comparison fails, zero is returned, and the packet is rejected. If it is successful, a non-zero value is returned, and the packet is accepted. **So the small BPF program filters and accepts all IP packets**. You can find other BPF programs in the original paper. Go to read it, and you can feel the flexibility of BPF as well as the beauty of the design. 
+
+##### Kernel implementation of BPF
+
+
+##### BPF JIT
+
+### Set BPF in sniffer
 
 ```c
 static inline unsigned int run_filter(struct sk_buff *skb, struct sock *sk,
