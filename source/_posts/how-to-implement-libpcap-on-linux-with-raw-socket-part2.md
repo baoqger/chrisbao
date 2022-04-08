@@ -119,6 +119,7 @@ Now let's try to understand the following small BPF program based on the knowled
 (002) ret      #262144
 (003) ret      #0
 ```
+The BPF program consists of an array of BPF instructions. For example, the above BPF program contains four instructions. 
 
 The first instruction **ldh** loads a half-word(16-bit) value into the accumulator from offset 12 in the Ethernet packet. According to the Ethernet frame format shown below, the value is just the `Ethernet type` field. The Ethernet type is used to indicate which protocol is encapsulated in the frame's payload (for example,  0x0806 for ARP, **0x0800** for IPv4, and 0x86DD for IPv6).
 
@@ -128,12 +129,10 @@ The second instruction **jeq** compares the accumulator (currently stores `Ether
 
 ##### Kernel implementation of BPF
 
-
-##### BPF JIT
-
-### Set BPF in sniffer
-
+Next, let's examine how kernel implements BPF. As mentioned above, the hook function `packet_rcv` calls `run_filter` to handle the filtering logic. `run_filter` is defined as follows: 
 ```c
+/* Copied from net/packet/af_packet.c */
+/* function run_filter is called in packet_rcv*/
 static inline unsigned int run_filter(struct sk_buff *skb, struct sock *sk,
 				      unsigned int res)
 {
@@ -148,4 +147,68 @@ static inline unsigned int run_filter(struct sk_buff *skb, struct sock *sk,
 	return res;
 }
 ```
+
+You can find that the real filtering logic is inside `sk_run_filter`:  
+
+```c
+unsigned int sk_run_filter(struct sk_buff *skb, struct sock_filter *filter, int flen)
+{
+	struct sock_filter *fentry;	/* We walk down these */
+	void *ptr;
+	u32 A = 0;			/* Accumulator */
+	u32 X = 0;			/* Index Register */
+	u32 mem[BPF_MEMWORDS];		/* Scratch Memory Store */
+	u32 tmp;
+	int k;
+	int pc;
+
+	/*
+	 * Process array of filter instructions.
+	 */
+	for (pc = 0; pc < flen; pc++) {
+		fentry = &filter[pc];
+
+		switch (fentry->code) {
+		case BPF_ALU|BPF_ADD|BPF_X:
+			A += X;
+			continue;
+		case BPF_ALU|BPF_ADD|BPF_K:
+			A += fentry->k;
+			continue;
+		case BPF_ALU|BPF_SUB|BPF_X:
+			A -= X;
+			continue;
+		case BPF_ALU|BPF_SUB|BPF_K:
+			A -= fentry->k;
+			continue;
+		case BPF_ALU|BPF_MUL|BPF_X:
+			A *= X;
+			continue;
+		/* some code omitted ... */
+		case BPF_RET|BPF_K:
+			return fentry->k;
+		case BPF_RET|BPF_A:
+			return A;
+		case BPF_ST:
+			mem[fentry->k] = A;
+			continue;
+		case BPF_STX:
+			mem[fentry->k] = X;
+			continue;
+		default:
+			WARN_ON(1);
+			return 0;
+		}
+	}
+
+	return 0;
+}
+```
+Same as we mentioned, `sk_run_filter` is simply a boolean-valued function on a packet. It maintains the accumulator, the index register, etc. as local variables. And process the array of BPF filter instructions in a `for` loop. Each instruction will update the value of local variables. In this way, it simulates a virtual CPU. Interesting, right? 
+
+##### BPF JIT
+
+### Set BPF in sniffer
+
+
 
