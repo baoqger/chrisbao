@@ -208,6 +208,14 @@ Same as we mentioned, `sk_run_filter` is simply a boolean-valued function on a p
 
 ##### BPF JIT
 
+Since each network packet must go through the filtering function, so it is becomes the performance bottleneck of the entire system. 
+
+A `just-in-time (JIT)` compiler was introduced into the kernel in **2011** to speed up BPF bytecode execution. 
+
+- What is a `JIT` compiler? A `JIT` compiler runs **after** the program has started and compiles the code(usually bytecode or some kind of VM instructions) on the fly(or just in time, as it's called) into a form that's usually faster, typically the host CPU's native instruction set. This is in constrast to a `traditional compiler` that compiles all the code to machine language **before** the program is first run. 
+
+In `BPF` case, the `JIT` compiler translates BPF bytecode into a host system's assembly code directly, which can optimize the performance a lot. I will not show details about JIT in this article. You can refer to the [kernel code](https://elixir.bootlin.com/linux/v3.19.8/source/arch/arm/net/bpf_jit_32.c#L868).  
+
 ### Set BPF in sniffer
 
 
