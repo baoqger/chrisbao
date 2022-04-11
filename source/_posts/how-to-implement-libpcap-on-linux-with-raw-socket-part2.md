@@ -290,7 +290,9 @@ if (setsockopt(sock, SOL_SOCKET, SO_ATTACH_FILTER, &Filter, sizeof(Filter)) < 0)
 
 `setsockopt` system call triggers two kernel functions: `sock_setsockopt` and `sk_attach_filter` (I'll not show the details for these two functions), which **binds the filters to the socket**. And in `run_filter` kernel function (mentioned above), it can **get the filters from the socket** and **execute the filters on the packet**. 
 
-So far, every piece is connected. The puzzle of BPF is solved. 
+So far, every piece is connected. The puzzle of BPF is solved. The `BPF` machine allows the user-space applications to inject customized BPF programs straight into a kernel. Once loaded and verified, BPF programs execute in kernel context. These BPF programs operate inside kernel memory space with access to all the internal kernel states available to it. For example, the `cBPF` machine which uses the network packet data. But this power can be extended as `eBPF`, which can be used in many other varied applications. As someone [said](https://www.brendangregg.com/bpf-performance-tools-book.html) **In some way, eBPF does to the kernel what Javascript does to the websites: it allows all sorts of new application to be created.**  In the future, I plan to examine eBPF in depth. 
+
+<img src="/images/bpf-run-instructions.png" title="BPF Run Instructions" width="600px" height="400px">
 
 
 ### Summary
