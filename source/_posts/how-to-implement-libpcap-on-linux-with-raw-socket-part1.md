@@ -6,7 +6,7 @@ tags: packet sniffer, socket, PF_PACKET
 
 ### Background
 
-When we refer to network packet sniffer, some famous and popular tools come to your mind, like `tcpdump`. I have shown you how to capture network packets in my previous articles. But have you ever thought about writing a packet sniffer from scratch without dependencies on any third-party libraries? We need to dig deep into the operating system and find the weapons needed to build this tool. Sounds complex, right? In this article, let us do it. After reading this article, you can find that it is not as difficult as you think. 
+When we refer to network packet sniffer, some famous and popular tools come to your mind, like `tcpdump`. I have shown you how to capture network packets with such tools in my previous articles. But have you ever thought about writing a packet sniffer from scratch without dependencies on any third-party libraries? We need to dig deep into the operating system and find the weapons needed to build this tool. Sounds complex, right? In this article, let us do it. After reading this article, you can find that it is not as difficult as you think. 
 
 Note that different operating system kernels have different internal network implementations. This article will focus on the `Linux` platform. 
 
