@@ -294,6 +294,58 @@ So far, every piece is connected. The puzzle of BPF is solved. The `BPF` machine
 
 <img src="/images/bpf-run-instructions.png" title="BPF Run Instructions" width="600px" height="400px">
 
+### Process the packet
+
+We examined the `BPF` filtering theory on the kernel level a lot in the above section. But for our tiny sniffer, the last step we need to do is process the network packet. 
+
+- First, the `recvfrom` system call reads the packet from the socket. And we put the system call in a `while` loop to keep reading the incoming packets. 
+
+- Then, we print the source and destination `MAC` address in the packet(the packet we got is a raw Ethernet frame in Layer 2, right?). And if what this Ethernet frame contains is an `IP4` packet, then we print out the source and destination `IP` address. To understand more about it, you can study the header format of various network protocols. I will not cover in details here.
+
+```c
+while(1) {
+	printf("-----------\n");
+	n = recvfrom(sock, buffer, 2048, 0, NULL, NULL);
+	printf("%d bytes read\n", n);
+
+	/* Check to see if the packet contains at least
+	* complete Ethernet (14), IP (20) and TCP/UDP
+	* (8) headers.
+	*/
+	if (n < 42) {
+		perror("recvfrom():");
+		printf("Incomplete packet (errno is %d)\n", errno);
+		close(sock);
+		exit(0);
+	}
+
+	ethhead = buffer;
+	printf("Source MAC address: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n",
+		ethhead[0], ethhead[1], ethhead[2], ethhead[3], ethhead[4], ethhead[5]
+	);
+	printf("Destination MAC address: %.2x:%.2x:%.2x:%.2x:%.2x:%.2x\n",
+		ethhead[6], ethhead[7], ethhead[8], ethhead[9], ethhead[10], ethhead[11]
+	);
+
+	iphead = buffer + 14; 
+
+	if (*iphead==0x45) { /* Double check for IPv4
+						* and no options present */
+		printf("Source host %d.%d.%d.%d\n",
+				iphead[12],iphead[13],
+				iphead[14],iphead[15]);
+		printf("Dest host %d.%d.%d.%d\n",
+				iphead[16],iphead[17],
+				iphead[18],iphead[19]);
+		printf("Source,Dest ports %d,%d\n",
+				(iphead[20]<<8)+iphead[21],
+				(iphead[22]<<8)+iphead[23]);
+		printf("Layer-4 protocol %s\n", transport_protocol(iphead[9]));
+	}
+}
+```
+
+You can find the complete source code of the sniffer in this Github [repo](https://github.com/baoqger/raw-socket-packet-capture-/blob/master/raw_socket.c).
 
 ### Summary
 In this article, we examine how to add filters to our sniffer. First, we analyze why the filter should be running inside kernel space instead of the application space. Then, this article examines the `BPF` machine design and implementation in detail based on the paper. We reviewed the kernel source code to understand how to implement the `BPF` virtual machine. As I mentioned above, the original `BPF`(`cBPF`) was extended to `eBPF` now. But the understanding of the BPF virtual machine is very helpful to `eBPF` as well.   
