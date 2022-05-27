@@ -39,15 +39,19 @@ We can write a Kernel module in such an easy and simple way because the Linux Ke
 
 Let's examine several technical points worth to remark as follows: 
 
-init, exit entry point. 
+First, Kernel modules must have at least two functions: a "start" function which is called when the module is loaded into the kernel, and an "end" function which is called just before it is removed from the kernel. Before kernel 2.3.13, the names of these two functions are hardcoded as `init_module()` and `cleanup_module()`. But in the new versions, you can use whatever name you like for the start and end functions of a module by using the `module_init` and `module_exit` macros. The macros are defined in `include/linux/module.h` and `include/linux/init.h`. You can refer there for detailed information. 
 
-Typically, init_module() either registers a handler for something with the kernel, or it replaces one of the kernel functions with its own code (usually code to do something and then call the original function). The cleanup_module() function is supposed to undo whatever init_module() did, so the module can be unloaded safely.
+Typically, `module_init` either registers a handler for something with the kernel (for example, the mini-firewall developed in this article), or it replaces one of the kernel functions with its own code (usually code to do something and then call the original function). The `module_exit` function is supposed to undo whatever `module_init` did, so the module can be unloaded safely.
 
-printk source code
+Second, `printk` function provides similar behaviors to `printf`, which accepts the `format string` as the first argument. The `printk` function prototype goes as follows:
 
-the path to header file
+```c
+int printk(const char *fmt, ...);
+```
 
-init and exit module
+`printk` function allows a caller to specify `log level` to indicate the type and importance of the message being sent to the kernel message log. For example, in the above code, the log level `KERN_INFO` is specified by prepending to the format string. In C programming, this syntax is called [`string literal concatenation`](https://en.wikipedia.org/wiki/String_literal#String_literal_concatenation). (In other high-level programming languages, string concatenation is generally done with `+` operator). For the function `printk` and `log level`, you can find more information in `include/linux/kern_levels.h` and `include/linux/printk.h`.   
+
+Note: The path to header files for Linux kernel module development is different from the one you often used for the application development. Don't try to find the header file inside */usr/include/linux*, instead please use the following path */lib/modules/\`uname -r\`/build/include/linux* (`uname -r` command returns your kernel version).
 #### Build the module
 kbuild
 #### Load the module
