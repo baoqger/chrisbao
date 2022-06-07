@@ -12,7 +12,7 @@ In this last [article](https://organicprogrammer.com/2022/05/04/how-to-write-a-n
 First, I have to admit that Linux Kernel module development is a kind of large and complex technology topic. And there are many great [online resources](https://sysprog21.github.io/lkmpg/) about it. This series of articles is focusing on developing the mini-firewall based on Netfilter, so we can't cover all the aspects of the Kernel module itself. In future articles, I'll examine more in-depth knowledge of kernel modules. 
 #### Write the module
 
-You can write the `hello world` Kernel module with a single `C` source code file as follows:  
+You can write the `hello world` Kernel module with a single `C` source code file `hello.c` as follows:  
 
 ```c
 #include <linux/init.h> /* Needed for the macros */
@@ -52,8 +52,27 @@ int printk(const char *fmt, ...);
 `printk` function allows a caller to specify `log level` to indicate the type and importance of the message being sent to the kernel message log. For example, in the above code, the log level `KERN_INFO` is specified by prepending to the format string. In C programming, this syntax is called [`string literal concatenation`](https://en.wikipedia.org/wiki/String_literal#String_literal_concatenation). (In other high-level programming languages, string concatenation is generally done with `+` operator). For the function `printk` and `log level`, you can find more information in `include/linux/kern_levels.h` and `include/linux/printk.h`.   
 
 Note: The path to header files for Linux kernel module development is different from the one you often used for the application development. Don't try to find the header file inside */usr/include/linux*, instead please use the following path */lib/modules/\`uname -r\`/build/include/linux* (`uname -r` command returns your kernel version).
+
+Next, let's build this hello-world kernel module.
 #### Build the module
-kbuild
+The way to build a kernel module is a little different from how to build a user-space application. The efficient solution to build kernel image and its modules is `Kernel Build System(Kbuild)`. 
+
+`Kbuild` is a complex topic and I won't explain it in too much detail here. Simply speaking, `Kbuild` allows you to create highly customized kernel binary images and modules. Technically, each subdirectory contains a `Makefile` compiling only the source code files in its directory. And a top-level Makefile recursively executes each subdirectory's Makefile to generate the binary objects. And you can control which subdirectories are included by defining `config files`. In detail, you can refer to other [documents](https://www.linuxjournal.com/content/kbuild-linux-kernel-build-system). 
+
+The following is the Makefile for the `hello world` module: 
+```Makefile
+obj-m += hello.o
+PWD := $(CURDIR)
+all:
+        make -C /lib/modules/$(shell uname -r)/build M=$(PWD) modules
+clean:
+        make -C /lib/modules/$(shell uname -r)/build M=$(PWD) clean
+```
+
+The `make -C dir` command changes to directory dir before reading the makefiles or doing anything else. The top-level Makefile in */lib/modules/$(shell uname -r)/build* will be used. You can find that command `make M=dir modules` is used to make all modules in specified dir.
+
+And in the module-level Makefile, the `obj-m` syntax tells `kbuild` system to build `module_name.o` from `module_name.c`, and after linking, will result in the kernel module `module_name.ko`. In our case, the module name is `hello`.
+
 #### Load the module
 lsmod, insmod, rmmod
 #### Debug the module
