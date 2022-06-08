@@ -1,12 +1,12 @@
 ---
-title: "Write a Linux firewall from scratch based on Netfilter: part two- "
+title: "Write a Linux firewall from scratch based on Netfilter: part two- hello world module"
 date: 2022-05-05 18:06:50
 tags: Linux module, Netfilter, firewall 
 ---
 
 ### Background
 
-In this last [article](https://organicprogrammer.com/2022/05/04/how-to-write-a-netfilter-firewall/), we examined the basics of `Netfilter` and `Linux kernel modules` in theory. In this article, we will make our hands dirty and start implementing our mini-firewall. We will walk through the whole process step by step. This article will focus on two tasks. First, let's write our first Linux kernel module using a simple `hello world` demo. Then let's learn how to build the module(which is very different from compiling an application in the user space) and how to load it in the kernel. After understanding how to write a module, as the second task, let's write the initial version of our mini-firewall module using [Netfilter's hook architecture](https://wiki.nftables.org/wiki-nftables/index.php/Netfilter_hooks). All right. Let's start the journey. 
+In this last [article](https://organicprogrammer.com/2022/05/04/how-to-write-a-netfilter-firewall/), we examined the basics of `Netfilter` and `Linux kernel modules` in theory. Starting from this article, we will make our hands dirty and start implementing our mini-firewall. We will walk through the whole process step by step. In this article, let's write our first Linux kernel module using a simple `hello world` demo. Then let's learn how to build the module(which is very different from compiling an application in the user space) and how to load it in the kernel. After understanding how to write a module, in the next article, let's write the initial version of our mini-firewall module using [Netfilter's hook architecture](https://wiki.nftables.org/wiki-nftables/index.php/Netfilter_hooks). All right. Let's start the journey. 
 
 ### Make the first Kernel module
 First, I have to admit that Linux Kernel module development is a kind of large and complex technology topic. And there are many great [online resources](https://sysprog21.github.io/lkmpg/) about it. This series of articles is focusing on developing the mini-firewall based on Netfilter, so we can't cover all the aspects of the Kernel module itself. In future articles, I'll examine more in-depth knowledge of kernel modules. 
@@ -73,7 +73,64 @@ The `make -C dir` command changes to directory dir before reading the makefiles 
 
 And in the module-level Makefile, the `obj-m` syntax tells `kbuild` system to build `module_name.o` from `module_name.c`, and after linking, will result in the kernel module `module_name.ko`. In our case, the module name is `hello`.
 
+The build process goes as follows: 
+
+```bash
+chrisbao:~/develop/kernel/hello-1$ sudo make
+make -C /lib/modules/4.15.0-176-generic/build M=/home/DIR/jbao6/develop/kernel/hello-1  modules
+make[1]: Entering directory '/usr/src/linux-headers-4.15.0-176-generic'
+  CC [M]  /home/DIR/jbao6/develop/kernel/hello-1/hello.o
+  Building modules, stage 2.
+  MODPOST 1 modules
+  CC      /home/DIR/jbao6/develop/kernel/hello-1/hello.mod.o
+  LD [M]  /home/DIR/jbao6/develop/kernel/hello-1/hello.ko
+make[1]: Leaving directory '/usr/src/linux-headers-4.15.0-176-generic'
+```
+After the build, you can get several new files in the same directory: 
+```bash
+chrisbao:~/develop/kernel/hello-1$ ls
+hello.c  hello.ko  hello.mod.c  hello.mod.o  hello.o  Makefile  modules.order  Module.symvers
+```
+The file ends with `.ko` is the kernel module. You can ignore other files now, I will write another article later to have a deep discussion about the kernel module system. 
+
 #### Load the module
-lsmod, insmod, rmmod
+With the `file` command, you can note that the kernel module is an `ELF(Executable and Linkable Format)` format file. ELF files are typically the output of a compiler or linker and are a binary format. 
+
+```bash
+chrisba:~/develop/kernel/hello-1$ file hello.ko
+hello.ko: ELF 64-bit LSB relocatable, x86-64, version 1 (SYSV), BuildID[sha1]=f0da99c757751e7e9f9c4e55f527fb034a0a4253, not stripped
+```
+
+Next step, let's try to install and remove the module dynamically. You need to know the following three commands: 
+
+- *lsmod*: shows the list of kernel modules currently loaded.
+- *insmod*: inserts a module into the Linux Kernel by running `sudo insmod module_name.ko`
+- *rmmod*: removes a module from the Linux Kernel by running `sudo rmmod module_name`
+
+Since the `hello world` module is quite simple, you can easily install and remove the module as you wish. I will not show the detailed commands here and leave it to the readers. 
+
+**Note**: It doesn't mean that you can easily install and remove any kernel module without any issues. If the module you are loading has bugs, the entire system can crash. 
 #### Debug the module
-dmesg
+
+Next step, let's prove that the `hello world` module is installed and removed as expected. We will use `dmesg` command. `dmesg` (diagnostic messages) can print the messages in the `kernel ring buffer`. 
+
+First, a [`ring buffer`](https://en.wikipedia.org/wiki/Circular_buffer) is a data structure that uses a single, fixed-size buffer as if it were connected end-to-end. The `kernel ring buffer` is a ring buffer that records messages related to the operation of the kernel. As we mentioned above, the kernel logs printed by the `printk` function will be sent to the kernel ring buffer. 
+
+We can find the messages produced by our module with command `dmesg | grep world` as follows:
+
+```bash
+chrisbao:~$ dmesg | grep world
+
+[2147137.177254] Hello, world
+[3281962.445169] Goodbye, world
+[3282008.037591] Hello, world
+[3282054.921824] Goodbye, world
+```
+
+Now you can see that the `hello world` is loaded into the kernel correctly. And it can be removed dynamically as well. Great. 
+
+### Summary
+
+In this article, we examine how to write a kernel module, how to build it and how to install it into the kernel dynamically. Next article we can work on the mini-firewall as a `Netfilter` module. 
+
+
