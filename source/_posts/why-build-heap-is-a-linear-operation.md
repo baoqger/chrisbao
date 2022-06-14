@@ -8,7 +8,7 @@ tags: priority queue, data structure, algorithm, time complexity, Big O notation
 
 In this article, I will focus on the topic of `data structure and algorithms` (in my eyes, one of the most important skills for software engineers). Someday I came across one [question](https://stackoverflow.com/questions/9755721/how-can-building-a-heap-be-on-time-complexity) goes like this: *how can building a heap be O(n) time complexity?* This question confuses me for a while, so I did some investigation and research on it. This article will share what I learned during this process, which covers the following points:
 - What is a heap data structure? How does a heap behave? 
-- How to implement a completed heap in C programming?
+- How to implement a heap in C programming?
 - How to do the time complexity analysis on building the heap?
 
 ### Basics of Heap
@@ -294,7 +294,7 @@ Next, let's analyze the time complexity of this above process. Suppose there are
 
 When there is only one node in the last level then {% katex %} n = 2^{h} {% endkatex %}. And when the last level of the tree is fully filled then {% katex %} n = 2^{h+1} - 1 {% endkatex %}
 
-And start from the bottom as level *0* (the root node is level *h*), in level *j*, there are at most {% katex %} 2^{h-j} {% endkatex %} nodes. And each node at most takes *j* times swap operation. So in level *i*, the total number of operation is {% katex %} j*2^{h-j} {% endkatex %}.
+And start from the bottom as level *0* (the root node is level *h*), in level *j*, there are at most {% katex %} 2^{h-j} {% endkatex %} nodes. And each node at most takes *j* times swap operation. So in level *j*, the total number of operation is {% katex %} j*2^{h-j} {% endkatex %}.
 
 So the total running time for building the heap is proportional to:
 
@@ -308,12 +308,12 @@ If we factor out the {% katex %} 2^{h} {% endkatex %} term, then we get:
 T(n) = 2^{h} \displaystyle\sum_{j=0}^h {\frac {j} {2^{j}}}
 {% endkatex %}
 
-As we know, {% katex %} \displaystyle\sum_{j=0}^{\infin} {\frac {j} {2^{j}}} {% endkatex %} is a series converges to 2 (in detail, you can refer to this [wiki](https://en.wikipedia.org/wiki/Series_(mathematics))).  
+As we know, {% katex %} \displaystyle\sum_{j=0}^{\infty} {\frac {j} {2^{j}}} {% endkatex %} is a series converges to 2 (in detail, you can refer to this [wiki](https://en.wikipedia.org/wiki/Series_(mathematics))).  
 
 Using this we have:
 
 {% katex %} 
-T(n) = 2^{h} \displaystyle\sum_{j=0}^h {\frac {j} {2^{j}}} <= 2^{h} \displaystyle\sum_{j=0}^{\infin} {\frac {j} {2^{j}}} <= 2^{h}*2 = 2^{h + 1}
+T(n) = 2^{h} \displaystyle\sum_{j=0}^h {\frac {j} {2^{j}}} <= 2^{h} \displaystyle\sum_{j=0}^{\infty} {\frac {j} {2^{j}}} <= 2^{h}*2 = 2^{h + 1}
 {% endkatex %}
 
 Based on the condition {% katex %} 2^{h} <= n {% endkatex %}, so we have:
