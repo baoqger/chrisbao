@@ -1,5 +1,5 @@
 ---
-title: "Why build heap is a linear operation"
+title: "How to build a Heap in linear time complexity"
 date: 2018-10-08 07:43:52
 tags: priority queue, data structure, algorithm, time complexity, Big O notation
 ---
@@ -245,5 +245,89 @@ void maxheap_deletemax(maxheap h) {
 ```
 Based on the analysis of `heapify-up`, similarly, the time complexity of extract is also **O(log n)**.
 
-上面的做法都没有base case
-### Time complexity for building a heap
+In the next section, let's go back to the question raised at the beginning of this article. 
+### The time complexity of building a heap
+
+What's the time complexity of building a heap? The first answer that comes to my mind is **O(n log n)**. Since the time complexity to insert an element is *O(log n)*, for n elements the insert is repeated n times, so the time complexity is *O(n log n)*. Right?
+
+We can use another optimal solution to build a heap instead of inserting each element repeatedly. It goes as follows:
+
+- Arbitrarily putting the n elements into the array to respect the **shape property**.
+- Starting from the lowest level and moving upwards, sift the root of each subtree downward as in the `heapify-down` process until the **heap property** is restored. 
+
+This process can be illustrated with the following image:
+
+<img src="/images/build-heap.png" title="heap" width="400px" height="300px">
+
+This algorithm can be implemented as follows: 
+
+```c
+maxheap maxheap_heapify(const key_type* array, int n) {
+	assert(array && n > 0);
+	
+	maxheap h = (maxheap)malloc(sizeof(struct _maxheap));
+	if(h == NULL) {
+		fprintf(stderr, "Not enough memory!\n");
+		abort();
+	}
+	h->max_size = n;
+	h->cur_size = -1;
+	h->array = (key_type*)(malloc(sizeof(key_type)*h->max_size));
+	if(h->array == NULL) {
+		fprintf(stderr, "Not enough memory!\n");
+		abort();
+	}
+	h->cur_size = n-1;
+	for (int i=0; i< n; i++) {
+		h->array[i] = array[i];
+	}
+	// small trick here. don't need start the loop from the end
+	for (int i = h->max_size/2; i >= 0; i--) { 
+		maxheap_heapifydown(h, i);
+	}
+	return h;
+}
+```
+Next, let's analyze the time complexity of this above process. Suppose there are *n* elements in the heap, and the height of the heap is *h* (for the heap in the above image, the height is 3). Then we should have the following relationship: 
+
+{% katex %}  2^{h} <= n <= 2^{h+1} - 1 {% endkatex %}
+
+When there is only one node in the last level then {% katex %} n = 2^{h} {% endkatex %}. And when the last level of the tree is fully filled then {% katex %} n = 2^{h+1} - 1 {% endkatex %}
+
+And start from the bottom as level *0* (the root node is level *h*), in level *j*, there are at most {% katex %} 2^{h-j} {% endkatex %} nodes. And each node at most takes *j* times swap operation. So in level *i*, the total number of operation is {% katex %} j*2^{h-j} {% endkatex %}.
+
+So the total running time for building the heap is proportional to:
+
+{% katex %} 
+T(n) = \displaystyle\sum_{j=0}^h {j*2^{h-j}} = \displaystyle\sum_{j=0}^h {j* \frac {2^{h}} {2^{j}}}
+{% endkatex %}
+
+If we factor out the {% katex %} 2^{h} {% endkatex %} term, then we get:
+
+{% katex %} 
+T(n) = 2^{h} \displaystyle\sum_{j=0}^h {\frac {j} {2^{j}}}
+{% endkatex %}
+
+As we know, {% katex %} \displaystyle\sum_{j=0}^{\infin} {\frac {j} {2^{j}}} {% endkatex %} is a series converges to 2 (in detail, you can refer to this [wiki](https://en.wikipedia.org/wiki/Series_(mathematics))).  
+
+Using this we have:
+
+{% katex %} 
+T(n) = 2^{h} \displaystyle\sum_{j=0}^h {\frac {j} {2^{j}}} <= 2^{h} \displaystyle\sum_{j=0}^{\infin} {\frac {j} {2^{j}}} <= 2^{h}*2 = 2^{h + 1}
+{% endkatex %}
+
+Based on the condition {% katex %} 2^{h} <= n {% endkatex %}, so we have:
+
+{% katex %} 
+T(n) <= 2n = O(n)
+{% endkatex %}
+
+Now we prove that building a heap is a linear operation.
+
+### Summary
+
+In this article, we examined what is a `Heap` and understand how it behaves(`heapify-up` and `heapify-down`) by implementing it. More importantly, we analyze the time complexity of building a heap and prove it's a linear operation.
+
+
+
+
