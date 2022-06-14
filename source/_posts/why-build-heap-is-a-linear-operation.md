@@ -39,70 +39,211 @@ Because of the `shape property` of heaps, we usually implement it as an array, a
 - Each element in the array represents a node of the heap.
 - The parent/child relationship can be defined by the elements' indices in the array. Given a node at index `i`, the left child is at index `2*i + 1` and the right child is at index `2*i + 2`, and its parent is at index `⌊(i-1)/2⌋` (`⌊⌋` means Floor operation). 
 
-### How heapify works 
+<img src="/images/array-representation.png" title="heap" width="400px" height="300px">
 
-Both the insert and remove operations modify the heap to conform to the shape property first, by adding or removing from the end of the heap. Then the heap property is restored by traversing up or down the heap. Both operations take O(log n) time.
+Based on the above model, let's start implementing our heap. As we mentioned, there are two types of heaps: min-heap and max-heap, in this article, I will work on `max-heap`. The difference between max-heap and min-heap is trivial, you can try to write out the min-heap after you understand this article. 
 
-```
-// Perform a down-heap or heapify-down operation for a max-heap
-// A: an array representing the heap, indexed starting at 1
-// i: the index to start at when heapifying down
-Max-Heapify(A, i):
-    left ← 2×i
-    right ← 2×i + 1
-    largest ← i
-    
-    if left ≤ length(A) and A[left] > A[largest] then:
-        largest ← left
+The completed code implementation is inside this Github [repo](https://github.com/baoqger/max-heap-in-c). 
 
-    if right ≤ length(A) and A[right] > A[largest] then:
-        largest ← right
-    
-    if largest ≠ i then:
-        swap A[i] and A[largest]
-        Max-Heapify(A, largest)
-```
+First, let's define the interfaces of max-heap in the header file as follows:
 
-```
-// Perform a down-heap or heapify-down operation for a min-heap
-// A: an array representing the heap, indexed starting at 1
-// i: the index to start at when heapifying down
-Max-Heapify(A, i):
-    left ← 2×i
-    right ← 2×i + 1
-    smallest ← i
-    
-    if left ≤ length(A) and A[left] < A[smallest] then:
-        smallest ← left
+```c
+// maxheap.h file
+#ifndef _MAXHEAP_H
+#define _MAXHEAP_H
 
-    if right ≤ length(A) and A[right] < A[largest] then:
-        smallest ← right
-    
-    if smallest ≠ i then:
-        swap A[i] and A[smallest]
-        Max-Heapify(A, smallest)
+typedef int key_type;
+typedef struct _maxheap *maxheap; // opaque type
+
+maxheap maxheap_create();
+maxheap maxheap_heapify(const key_type *array, int n);
+void maxheap_destroy(maxheap);
+
+int maxheap_findmax(maxheap);
+void maxheap_insert(maxheap, key_type);
+void maxheap_deletemax(maxheap);
+
+int maxheap_is_empty(maxheap);
+int maxheap_size(maxheap);
+void maxheap_clear(maxheap);
+
+#endif
 ```
 
-heapify-up goes as follows: 
+We define the max-heap as `struct _maxheap` and hide its implementation in the header file. And expose this struct in the interfaces via a handler(which is a pointer) `maxheap`. This technique in C program is called [`opaque type`](https://stackoverflow.com/questions/2301454/what-defines-an-opaque-type-in-c-and-when-are-they-necessary-and-or-useful). `Opaque type` simulates the encapsulation concept of OOP programming. So that the internal details of a type can change without the code that uses it having to change. The detailed implementation goes as following:
 
+```c
+// maxheap.c file
+struct _maxheap {
+	key_type* array;
+	int max_size;
+	int cur_size;
+};
 ```
-// Perform a down-heap or heapify-down operation for a max-heap
-// A: an array representing the heap, indexed starting at 1
-// i: the index to start at when heapifying down
-Max-Heapify(A, i):
+
+The max-heap elements are stored inside the `array` field. The capacity of the array is defined as field `max_size` and the current number of elements in the array is `cur_size`. 
+
+Next, let's go through the interfaces one by one (most of the interfaces are straightforward, so I will not explain too much about them). The first one is `maxheap_create`, which constructs an instance of `maxheap` by allocating memory for it. 
+
+```c
+// maxheap.c file
+maxheap maxheap_create() {
+	maxheap h = (maxheap)malloc(sizeof(struct _maxheap));
+	if (h == NULL) {
+		fprintf(stderr, "Not enough memory!\n");
+		abort();
+	}
+	h->max_size = 64;
+	h->cur_size = -1;
+	h->array = (key_type*) malloc(sizeof(key_type)*(h->max_size));
+	if (h->array == NULL) {
+		fprintf(stderr, "Not enough memory!\n");
+		abort();
+	}
+	return h;
+}
+```
+
+The initial capacity of the max-heap is set to 64, we can dynamically enlarge the capacity when more elements need to be inserted into the heap: 
+
+```c
+// maxheap.c file
+static void maxheap_double_capacity(maxheap h) {
+	int new_max_size = 2 * h->max_size;
+	key_type* new_array = (key_type*) malloc(sizeof(key_type)* (new_max_size));
+
+	if (new_array == NULL) {
+		fprintf(stderr, "Not enough memory!\n");
+		abort();
+	}
+	for(int i = 0; i < h->cur_size; i++) {
+		new_array[i] = h->array[i];
+	}
+	free(h->array);
+	h->array = new_array;
+	h->max_size = new_max_size;
+}
+```
+This is an internal API, so we define it as a [`static`](https://www.tutorialspoint.com/static-functions-in-c) function, which limits the access scope to its object file. 
+
+When the program doesn't use the max-heap data anymore, we can destroy it as follows:
+
+```c
+// maxheap.c file
+void maxheap_destroy(maxheap h) {
+	assert(h);
+	free(h->array);
+	free(h);
+}
+```
+Don't forget to release the allocated memory by calling `free`. 
+
+Next, let's work on the difficult but interesting part: insert an element in **O(log N)** time. The solution goes as follows:
+- Add the element to the end of the array. (The end of the array corresponds to the leftmost open space of the bottom level of the tree).
+- Compare the added element with its parent; if they are in the correct order(parent should be greater or equal to the child in max-heap, right?), stop.
+- If not, swap the element with its parent and return to the above step until reaches the top of the tree(the top of the tree corresponds to the first element in the array). 
+
+The first step of adding an element to the array's end conforms to the **shape property** first. Then the **heap property** is restored by traversing up the heap. The recursive traversing up and swapping process is called `heapify-up`. It is can be illustrated by the following pseudo-code:
+```
+Max-Heapify-Up(A, i):
     parent ← (i - 1) / 2
     
     if parent >= 0 and A[parent] < A[i] then:
         swap A[i] and A[parent]
-        Max-Heapify(A, parent)
+        Max-Heapify-Up(A, parent)
 ```
+The implementation goes as follows:
 
+```c
+// maxheap.c file
+static void maxheap_swap(maxheap h, int i, int j) {
+	assert(h && i >=0 && i <= h->cur_size && j >= 0 && j <= h->cur_size);
+	key_type tmp = h->array[i];
+	h->array[i] = h->array[j];
+	h->array[j] = tmp;
+}
 
-recursion的四个基本条件：
-1. base case
-2. make progress
-3. assume all recursions work. Don't do bookkeeping work by yourself.  
-4. NO duplicated work for sub problem.
+static void maxheap_heapifyup(maxheap h, int k) {
+	assert(h && k >= 0 && k <= h->cur_size);
+
+	while(k>=0 && h->array[k] > h->array[k/2]) {
+		maxheap_swap(h, k/2, k);
+		k /= 2;
+	}
+}
+
+void maxheap_insert(maxheap h, key_type key) {
+	assert(h);
+
+	h->cur_size += 1;
+	// make sure there is space
+	if (h->cur_size == h->max_size) {
+		maxheap_double_capacity(h);
+	}
+
+	// add at the end
+	h->array[h->cur_size] = key;
+	
+	// restore the heap property by heapify-up
+	maxheap_heapifyup(h, h->cur_size);
+
+}
+```
+The number of operations requried in `heapify-up` depends on how many levels the new element must rise to satisfy the heap property. So the worst-case time complexity should be the height of the binary heap, which is **log N**. And appending a new element to the end of the array can be done with constant time by using `cur_size` as the index. As a result, the total time complexity of the insert operation should be **O(log N)**. 
+
+Similarly, next, let's work on: extract the root from the heap while retaining the heap property in **O(log N)** time. The solution goes as follows:
+- Replace the first element of the array with the element at the end. Then delete the last element. 
+- Compare the new root with its children; if they are in the correct order, stop.
+- If not, swap the element with its child and repeat the above step.
+
+This similar traversing down and swapping process is called `heapify-down`. `heapify-down` is a little more complex than `heapify-up` since the parent element needs to swap with the *larger* children in the max heap. The implementation goes as follows: 
+
+```c
+// maxheap.c file
+int maxheap_is_empty(maxheap h) {
+	assert(h);
+	return h->cur_size < 0;
+}
+
+static void maxheap_heapifydown(maxheap h, int k) {
+	assert(h);
+	
+	while(2*k <= h->cur_size) {
+		int j = 2*k;
+		if (j<h->cur_size && h->array[j+1] > h->array[j]) {
+			j++;
+		}
+		if (h->array[k] >= h->array[j]) {
+			break;
+		}
+		maxheap_swap(h, k, j);
+		k = j;
+	}
+}
+
+int maxheap_findmax(maxheap h) {
+	if (maxheap_is_empty(h)) {
+		fprintf(stderr, "Heap is empty!\n");
+		abort();
+	}
+
+	// max is the first position
+	return h->array[0];
+}
+
+void maxheap_deletemax(maxheap h) {
+	if (maxheap_is_empty(h)) {
+		fprintf(stderr, "Heap is empty!\n");
+		abort();
+	}
+	// swap the first and last element
+	maxheap_swap(h, 0, h->cur_size);
+	h->cur_size -= 1;
+	
+	maxheap_heapifydown(h, 0);
+}
+```
+Based on the analysis of `heapify-up`, similarly, the time complexity of extract is also **O(log n)**.
 
 上面的做法都没有base case
 ### Time complexity for building a heap
