@@ -1,12 +1,12 @@
 ---
-title: "Write a Linux firewall from scratch based on Netfilter: part two- hello world module"
+title: "Write a Linux firewall from scratch based on Netfilter: part two - hello world module"
 date: 2022-05-05 18:06:50
 tags: Linux module, Netfilter, firewall 
 ---
 
 ### Background
 
-In this last [article](https://organicprogrammer.com/2022/05/04/how-to-write-a-netfilter-firewall/), we examined the basics of `Netfilter` and `Linux kernel modules` in theory. Starting from this article, we will make our hands dirty and start implementing our mini-firewall. We will walk through the whole process step by step. In this article, let's write our first Linux kernel module using a simple `hello world` demo. Then let's learn how to build the module(which is very different from compiling an application in the user space) and how to load it in the kernel. After understanding how to write a module, in the next article, let's write the initial version of our mini-firewall module using [Netfilter's hook architecture](https://wiki.nftables.org/wiki-nftables/index.php/Netfilter_hooks). All right. Let's start the journey. 
+In the last [article](https://organicprogrammer.com/2022/05/04/how-to-write-a-netfilter-firewall-part1/), we examined the basics of `Netfilter` and `Linux kernel modules` in theory. Starting from this article, we will make our hands dirty and start implementing our mini-firewall. We will walk through the whole process step by step. In this article, let's write our first Linux kernel module using a simple `hello world` demo. Then let's learn how to build the module(which is very different from compiling an application in the user space) and how to load it in the kernel. After understanding how to write a module, in the next article, let's write the initial version of our mini-firewall module using [Netfilter's hook architecture](https://wiki.nftables.org/wiki-nftables/index.php/Netfilter_hooks). All right. Let's start the journey. 
 
 ### Make the first Kernel module
 First, I have to admit that Linux Kernel module development is a kind of large and complex technology topic. And there are many great [online resources](https://sysprog21.github.io/lkmpg/) about it. This series of articles is focusing on developing the mini-firewall based on Netfilter, so we can't cover all the aspects of the Kernel module itself. In future articles, I'll examine more in-depth knowledge of kernel modules. 

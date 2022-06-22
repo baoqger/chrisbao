@@ -6,7 +6,7 @@ tags: Linux module, Netfilter, firewall
 
 ### Background
 
-`Firewalls` are an important tool that can be configured to protect your servers and infrastructure. Firewalls' main functionalities are filtering data, redirecting traffic, and protecting against network attacks. There are both hardware-based firewalls and software-based firewalls. I will not discuss too much about firewalls, since you can find many online documents about [it](https://en.wikipedia.org/wiki/Firewall_(computing)). I 
+`Firewalls` are an important tool that can be configured to protect your servers and infrastructure. Firewalls' main functionalities are filtering data, redirecting traffic, and protecting against network attacks. There are both hardware-based firewalls and software-based firewalls. I will not discuss too much about the background here, since you can find many online documents about [it](https://en.wikipedia.org/wiki/Firewall_(computing)).
 
 Have you ever thought of implementing a simple firewall from scratch? Sounds crazy? But with the power of Linux, you can do that. After you read this series of articles, you will find that actually, it is quite simple. 
 
