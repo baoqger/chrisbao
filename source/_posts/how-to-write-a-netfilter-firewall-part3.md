@@ -26,9 +26,11 @@ The hook function you defined in the module can mangle or filter the packets, bu
 - *NF_ACCEPT*: this means the hook function accepts the packet and it can go on the network stack trip. 
 - *NF_DROP*: this means the packet is dropped and no further parts of the network stack will be traversed.
 
-Note: Netfilter allows you to register multiple callback functions to the same hook with different priorities. If the first hook function accepts the packet, then the packet will be passed to the next functions with low priority. If the packet is dropped by one callback function, then the next functions(if existing) will not be traversed. 
+Netfilter allows you to register multiple callback functions to the same hook with different priorities. If the first hook function accepts the packet, then the packet will be passed to the next functions with low priority. If the packet is dropped by one callback function, then the next functions(if existing) will not be traversed. 
 
 As you see, `Netfilter` has a big scope and I can't cover every detail in the articles. So the mini-firewall developed here will work on the hook `NF_INET_PRE_ROUTING`, which means it works by controlling the inbound network traffic. But the way of registering the hook and handling the packet can be applied to all other hooks. 
+
+*Note*: there is another remarkable question: what's the difference between `Netfilter` and `eBPF`? If you don't know eBPF, please refer to my previous [article](https://organicprogrammer.com/2022/03/28/how-to-implement-libpcap-on-linux-with-raw-socket-part2/). Both of them are important network features in the Linux kernel. The important thing is `Netfilter` and `eBPF` hooks are located in different layers of the Kernel. As I drew in the above diagram, `eBPF` is located in a lower layer. 
 
 #### Kernel code of Netfilter hooks
 
@@ -89,17 +91,27 @@ The function `NF_HOOK` contains two steps:
 
 For the hook *NF_INET_LOCAL_IN*, the function `ip_rcv_finish` will be invoked after the hook functions pass. Its job is to pass the packet on to the next protocol handler(TCP or UDP) in the protocol stack to continue its journey! 
 
-The other 4 hooks all use the same function `NF_HOOK` to get triggered. The following table shows where the hooks are embedded in the kernel: 
+The other 4 hooks all use the same function `NF_HOOK` to trigger the callback functions. The following table shows where the hooks are embedded in the kernel, I leave them to the readers. 
 
 | Hook | File | Function |
 | ------ | ----------- |----------- |
-| NF_INET_PRE_ROUTING     | /kernel-src/net/ipv4/ip_input.c      | ip_rcv()       |
-| NF_INET_LOCAL_IN   | /kernel-src/net/ipv4/ip_input.c        | ip_local_deliver()       |
-| NF_INET_FORWARD   | /kernel-src/net/ipv4/ip_forward.c       | ip_forward()       |
-| NF_INET_POST_ROUTING   | /kernel-src/net/ipv4/ip_output.c        | ip_build_and_send_pkt()       |
-| NF_INET_LOCAL_OUT   | /kernel-src/net/ipv4/ip_output.c        |ip_output()       |
+| NF_INET_PRE_ROUTING | /kernel-src/net/ipv4/ip_input.c      | ip_rcv()                |
+| NF_INET_LOCAL_IN    | /kernel-src/net/ipv4/ip_input.c      | ip_local_deliver()      |
+| NF_INET_FORWARD     | /kernel-src/net/ipv4/ip_forward.c    | ip_forward()            |
+| NF_INET_POST_ROUTING| /kernel-src/net/ipv4/ip_output.c     | ip_build_and_send_pkt() |
+| NF_INET_LOCAL_OUT   | /kernel-src/net/ipv4/ip_output.c     |ip_output()              |
 
 
-netfilter vs ebpf
+Define the hook function
 
+Register the hook function
+
+Unregister the hook function
+
+Rule2: drop packets for an IP address
+ip_hdr
+ntohl
+IPADDRESS macro
+
+Rule1: drop all ICMP packets
 
