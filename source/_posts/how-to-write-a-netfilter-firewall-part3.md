@@ -9,7 +9,7 @@ In the previous [article](https://organicprogrammer.com/2022/05/05/how-to-write-
 
 ### Netfilter architecture.
 
-#### Basics of Netfilter hooks
+##### Basics of Netfilter hooks
 **The `Netfilter` framework provides a bunch of `hooks` in the Linux kernel. As network packets pass through the protocol stack in the kernel, they will traverse these hooks as well**. And Netfilter allows you to write modules and register callback functions with these hooks. When the hooks are triggered, the callback functions will be called. This is the basic idea behind Netfilter architecture. Not difficult to understand, right? 
 
 <img src="/images/netfilter-in-kernel.png" title="Netfilter architecture" width="800px" height="600px">
@@ -32,7 +32,7 @@ As you see, `Netfilter` has a big scope and I can't cover every detail in the ar
 
 *Note*: there is another remarkable question: what's the difference between `Netfilter` and `eBPF`? If you don't know eBPF, please refer to my previous [article](https://organicprogrammer.com/2022/03/28/how-to-implement-libpcap-on-linux-with-raw-socket-part2/). Both of them are important network features in the Linux kernel. The important thing is `Netfilter` and `eBPF` hooks are located in different layers of the Kernel. As I drew in the above diagram, `eBPF` is located in a lower layer. 
 
-#### Kernel code of Netfilter hooks
+##### Kernel code of Netfilter hooks
 
 To have a clear understanding of how the `Netfilter` framework is implemented inside the protocol stack, let's dig a little bit deeper and take a look at the kernel source code (Don't worry, only shows several simple functions). Let's use the hook `NF_INET_PRE_ROUTING` as an example; since the mini-firewall will be written based on it. 
 
@@ -101,6 +101,117 @@ The other 4 hooks all use the same function `NF_HOOK` to trigger the callback fu
 | NF_INET_POST_ROUTING| /kernel-src/net/ipv4/ip_output.c     | ip_build_and_send_pkt() |
 | NF_INET_LOCAL_OUT   | /kernel-src/net/ipv4/ip_output.c     |ip_output()              |
 
+Next, Let's review the Netfilter's APIs to create and register the hook function. 
+### Netfilter API
+
+It's straightforward to create a Netfilter module, which involves three steps: 
+- Define the hook function.
+- Register the hook function in the kernel module initialization process.
+- Unregister the hook function in the kernel module clean-up process. 
+
+Let's go through them quickly one by one. 
+
+##### Define a hook function
+
+The hook function name is whatever you want, but it must follow the signature below: 
+
+```c
+//In source code file /kernel-src/include/linux/netfilter.h
+typedef unsigned int nf_hookfn(void *priv,
+                               struct sk_buff *skb,
+                               const struct nf_hook_state *state);
+```
+
+The hook function can mangle or filter the packet whose data is stored in the `sk_buff` structure (we can ignore the other two parameters; since we don't use them in our mini-firewall). As we mentioned above, the callback function must return a Netfilter status code which is an integer. For instance, the `accepted` and `dropped` status is defined as follows: 
+
+
+```c
+// In source code file /kernel-src/include/uapi/linux/netfilter.h
+/* Responses from hook functions. */
+#define NF_DROP 0
+#define NF_ACCEPT 1
+```
+##### Register and unregister a hook function
+To register a hook function, we should wrap the defined hook function with related information, such as which hook you want to bind to, the protocol family and the priority of the hook function,  into a structure `struct nf_hook_ops` and pass it to the function `nf_register_net_hook`. 
+
+```c
+//In source code file /kernel-src/include/linux/netfilter.h
+struct nf_hook_ops {
+        /* User fills in from here down. */
+        nf_hookfn               *hook;    // callback function
+        struct net_device       *dev;     // network device interface
+        void                    *priv; 
+        u_int8_t                pf;       // protocol
+        unsigned int            hooknum;  // Netfilter hook enum
+        /* Hooks are ordered in ascending priority. */
+        int                     priority; // priority of callback function
+};
+```
+Most of the fields are very straightforward to understand. The one need to emphasize is the field `hooknum`, which is just the Netfilter hooks discussed above. They are defined as enumerators as follows: 
+
+```c
+// In source code file /kernel-src/include/uapi/linux/netfilter.h
+enum nf_inet_hooks {
+	NF_INET_PRE_ROUTING,
+	NF_INET_LOCAL_IN,
+	NF_INET_FORWARD,
+	NF_INET_LOCAL_OUT,
+	NF_INET_POST_ROUTING,
+	NF_INET_NUMHOOKS,
+	NF_INET_INGRESS = NF_INET_NUMHOOKS,
+};
+```
+
+The functions to register and unregister hook functions goes as follows: 
+
+```c
+//In source code file /kernel-src/include/linux/netfilter.h
+/* Function to register/unregister hook points. */
+int nf_register_net_hook(struct net *net, const struct nf_hook_ops *ops);
+void nf_unregister_net_hook(struct net *net, const struct nf_hook_ops *ops);
+```
+The first parameter `struct net` is related to the network namespace, we can ignore it for now and use a default value. 
+
+Next, let's implement our mini-firewall based on these APIs. 
+
+### Implement mini-firewall
+
+First, we need to clarify the requirements for our mini-firewall. I want to implement two network traffic control rules in the mini-firewall as follows:
+- *Network protocol rule*: drops the [ICMP](https://en.wikipedia.org/wiki/Internet_Control_Message_Protocol) protocol packets.
+- *IP address rule*: drops the packets from one specific IP address.
+
+The completed code implementation is in this Github [repo](https://github.com/baoqger/linux-mini-firewall-netfilter/blob/main/mini_firewall.c).
+
+##### Drop ICMP protocol packets
+
+`ICMP` is a network protocol widely used in the real world. The popular diagnostic tools like `ping` and `traceroute` run the ICMP protocol. We can filter out the ICMP packets based on the protocol type information in the IP headers with the following hook function: 
+```c
+static unsigned int nf_blockicmppkt_handler(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
+{
+	struct iphdr *iph;
+	struct udphdr *udph;
+	if(!skb)
+		return NF_ACCEPT;
+	iph = ip_hdr(skb);
+	if(iph->protocol == IPPROTO_UDP) {
+		udph = udp_hdr(skb);
+		if(ntohs(udph->dest) == 53) {
+			return NF_ACCEPT;
+		}
+	}
+	else if (iph->protocol == IPPROTO_TCP) {
+		return NF_ACCEPT;
+	}
+	else if (iph->protocol == IPPROTO_ICMP) {
+		printk(KERN_INFO "Drop ICMP packet \n");
+		return NF_DROP;
+	}
+	return NF_ACCEPT;
+}
+```
+
+##### Drop packets source from one specific IP address
+
 
 Define the hook function
 
@@ -110,8 +221,9 @@ Unregister the hook function
 
 Rule2: drop packets for an IP address
 ip_hdr
-ntohl
-IPADDRESS macro
+ntohl: Big Endian vs Little Endian
+u32 type
+how IPADDRESS macro
 
 Rule1: drop all ICMP packets
 
