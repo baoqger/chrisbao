@@ -184,31 +184,80 @@ The completed code implementation is in this Github [repo](https://github.com/ba
 
 ##### Drop ICMP protocol packets
 
-`ICMP` is a network protocol widely used in the real world. The popular diagnostic tools like `ping` and `traceroute` run the ICMP protocol. We can filter out the ICMP packets based on the protocol type information in the IP headers with the following hook function: 
+`ICMP` is a network protocol widely used in the real world. The popular diagnostic tools like `ping` and `traceroute` run the ICMP protocol. We can filter out the ICMP packets based on the protocol type in the IP headers with the following hook function: 
 ```c
 static unsigned int nf_blockicmppkt_handler(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 {
-	struct iphdr *iph;
-	struct udphdr *udph;
+	struct iphdr *iph;   // IP header
+	struct udphdr *udph; // UDP header
 	if(!skb)
 		return NF_ACCEPT;
-	iph = ip_hdr(skb);
-	if(iph->protocol == IPPROTO_UDP) {
+	iph = ip_hdr(skb); // retrieve the IP headers from the packet
+	if(iph->protocol == IPPROTO_UDP) { 
 		udph = udp_hdr(skb);
 		if(ntohs(udph->dest) == 53) {
-			return NF_ACCEPT;
+			return NF_ACCEPT; // accept UDP packet
 		}
 	}
 	else if (iph->protocol == IPPROTO_TCP) {
-		return NF_ACCEPT;
+		return NF_ACCEPT; // accept TCP packet
 	}
 	else if (iph->protocol == IPPROTO_ICMP) {
 		printk(KERN_INFO "Drop ICMP packet \n");
-		return NF_DROP;
+		return NF_DROP;   // drop TCP packet
 	}
 	return NF_ACCEPT;
 }
 ```
+
+The logic in the above hook function is easy to understand. First, we retrieve the IP headers from the network packet. And then according to the `protocol` type field in the headers, we decided to accept TCP and UDP packets but drop the ICMP packets. The only technique we need to pay attention to is the function `ip_hdr`, which is the kernel function defined as follows: 
+
+```c
+//In source code file /kernel-src/include/linux/ip.h
+static inline struct iphdr *ip_hdr(const struct sk_buff *skb)
+{
+        return (struct iphdr *)skb_network_header(skb);
+}
+// In source code file /kernel-src/include/linux/skbuff.h
+static inline unsigned char *skb_network_header(const struct sk_buff *skb)
+{
+        return skb->head + skb->network_header;
+}
+```
+The function `ip_hdr` delegates the task to the function `skb_network_header`. It gets IP headers based on the following two data: 
+
+- head: is the pointer to the packet;
+- network_header: is the offset between the pointer to the packet and the pointer to the network layer protocol header. In detail, you can refer to this [document](https://linux-kernel-labs.github.io/refs/heads/master/labs/networking.html).
+
+```c
+static struct nf_hook_ops *nf_blockicmppkt_ops = NULL;
+
+static int __init nf_minifirewall_init(void) {
+	nf_blockicmppkt_ops = (struct nf_hook_ops*)kcalloc(1,  sizeof(struct nf_hook_ops), GFP_KERNEL);
+	if (nf_blockicmppkt_ops != NULL) {
+		nf_blockicmppkt_ops->hook = (nf_hookfn*)nf_blockicmppkt_handler;
+		nf_blockicmppkt_ops->hooknum = NF_INET_PRE_ROUTING;
+		nf_blockicmppkt_ops->pf = NFPROTO_IPV4;
+		nf_blockicmppkt_ops->priority = NF_IP_PRI_FIRST;
+		
+		nf_register_net_hook(&init_net, nf_blockicmppkt_ops);
+	}
+	return 0;
+}
+
+static void __exit nf_minifirewall_exit(void) {
+	if(nf_blockicmppkt_ops != NULL) {
+		nf_unregister_net_hook(&init_net, nf_blockicmppkt_ops);
+		kfree(nf_blockicmppkt_ops);
+	}
+	printk(KERN_INFO "Exit");
+}
+
+module_init(nf_minifirewall_init);
+module_exit(nf_minifirewall_exit);
+```
+
+
 
 ##### Drop packets source from one specific IP address
 
