@@ -113,7 +113,7 @@ Let's go through them quickly one by one.
 
 ##### Define a hook function
 
-The hook function name is whatever you want, but it must follow the signature below: 
+The hook function name can be whatever you want, but it must follow the signature below: 
 
 ```c
 //In source code file /kernel-src/include/linux/netfilter.h
@@ -162,7 +162,7 @@ enum nf_inet_hooks {
 };
 ```
 
-The functions to register and unregister hook functions goes as follows: 
+Next, let's take a look at the functions to register and unregister hook functions goes as follows: 
 
 ```c
 //In source code file /kernel-src/include/linux/netfilter.h
@@ -172,11 +172,11 @@ void nf_unregister_net_hook(struct net *net, const struct nf_hook_ops *ops);
 ```
 The first parameter `struct net` is related to the network namespace, we can ignore it for now and use a default value. 
 
-Next, let's implement our mini-firewall based on these APIs. 
+Next, let's implement our mini-firewall based on these APIs. All right? 
 
 ### Implement mini-firewall
 
-First, we need to clarify the requirements for our mini-firewall. I want to implement two network traffic control rules in the mini-firewall as follows:
+First, we need to clarify the requirements for our mini-firewall. We'll implement two network traffic control rules in the mini-firewall as follows:
 - *Network protocol rule*: drops the [ICMP](https://en.wikipedia.org/wiki/Internet_Control_Message_Protocol) protocol packets.
 - *IP address rule*: drops the packets from one specific IP address.
 
@@ -186,6 +186,7 @@ The completed code implementation is in this Github [repo](https://github.com/ba
 
 `ICMP` is a network protocol widely used in the real world. The popular diagnostic tools like `ping` and `traceroute` run the ICMP protocol. We can filter out the ICMP packets based on the protocol type in the IP headers with the following hook function: 
 ```c
+// In mini-firewall.c 
 static unsigned int nf_blockicmppkt_handler(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
 {
 	struct iphdr *iph;   // IP header
@@ -229,7 +230,10 @@ The function `ip_hdr` delegates the task to the function `skb_network_header`. I
 - head: is the pointer to the packet;
 - network_header: is the offset between the pointer to the packet and the pointer to the network layer protocol header. In detail, you can refer to this [document](https://linux-kernel-labs.github.io/refs/heads/master/labs/networking.html).
 
+Next, we can register the above hook function as follows: 
+
 ```c
+// In mini-firewall.c 
 static struct nf_hook_ops *nf_blockicmppkt_ops = NULL;
 
 static int __init nf_minifirewall_init(void) {
@@ -238,7 +242,7 @@ static int __init nf_minifirewall_init(void) {
 		nf_blockicmppkt_ops->hook = (nf_hookfn*)nf_blockicmppkt_handler;
 		nf_blockicmppkt_ops->hooknum = NF_INET_PRE_ROUTING;
 		nf_blockicmppkt_ops->pf = NFPROTO_IPV4;
-		nf_blockicmppkt_ops->priority = NF_IP_PRI_FIRST;
+		nf_blockicmppkt_ops->priority = NF_IP_PRI_FIRST; // set the priority
 		
 		nf_register_net_hook(&init_net, nf_blockicmppkt_ops);
 	}
@@ -257,22 +261,160 @@ module_init(nf_minifirewall_init);
 module_exit(nf_minifirewall_exit);
 ```
 
+The above logic is self-explaining. I will not spend too much time here. 
 
+Next, it's time to demo how our mini-firewall works. 
+
+##### Demo time
+
+Before we load the mini-firewall module, the `ping` command can work as expected: 
+
+```python
+chrisbao@CN0005DOU18129:~$ lsmod | grep mini_firewall
+chrisbao@CN0005DOU18129:~$ ping www.google.com
+PING www.google.com (142.250.4.103) 56(84) bytes of data.
+64 bytes from sm-in-f103.1e100.net (142.250.4.103): icmp_seq=1 ttl=104 time=71.9 ms
+64 bytes from sm-in-f103.1e100.net (142.250.4.103): icmp_seq=2 ttl=104 time=71.8 ms
+64 bytes from sm-in-f103.1e100.net (142.250.4.103): icmp_seq=3 ttl=104 time=71.9 ms
+64 bytes from sm-in-f103.1e100.net (142.250.4.103): icmp_seq=4 ttl=104 time=71.8 ms
+^C
+--- www.google.com ping statistics ---
+4 packets transmitted, 4 received, 0% packet loss, time 3005ms
+rtt min/avg/max/mdev = 71.857/71.902/71.961/0.193 ms
+```
+
+In contrast, after the mini-firewall module is built and loaded (based on the commands we discussed previously): 
+
+```python
+chrisbao@CN0005DOU18129:~$ lsmod | grep mini_firewall
+mini_firewall          16384  0
+chrisbao@CN0005DOU18129:~$ ping www.google.com
+PING www.google.com (142.250.4.105) 56(84) bytes of data.
+^C
+--- www.google.com ping statistics ---
+6 packets transmitted, 0 received, 100% packet loss, time 5097ms
+```
+
+You can see all the packets are lost; because it is dropped by our mini-firewall. We can verify this by running the command `dmesg`: 
+
+```python
+chrisbao@CN0005DOU18129:~$ dmesg | tail -n 5
+[ 1260.184712] Drop ICMP packet
+[ 1261.208637] Drop ICMP packet
+[ 1262.232669] Drop ICMP packet
+[ 1263.256757] Drop ICMP packet
+[ 1264.280733] Drop ICMP packet
+```
+
+But other protocol packets can still run through the firewall. For instance, the command `wget 142.250.4.103` can return normally as follows:
+
+```python
+chrisbao@CN0005DOU18129:~$ wget 142.250.4.103
+--2022-06-25 10:12:39--  http://142.250.4.103/
+Connecting to 142.250.4.103:80... connected.
+HTTP request sent, awaiting response... 302 Moved Temporarily
+Location: http://142.250.4.103:6080/php/urlblock.php?args=AAAAfQAAABAjFEC0HSM7xhfO~a53FMMaAAAAEILI_eaKvZQ2xBfgKEgDtwsAAABNAAAATRPNhqoqFgHJ0ggbKLKcdinR4UvnlhgAR4~YyrY4tAnroOFkE_IsHsOg9~RFPc7nEoj6YdiDgqZImAmb_xw9ZuFLvF91P2HzP5tlu1WX&url=http://142.250.4.103%2f [following]
+--2022-06-25 10:12:39--  http://142.250.4.103:6080/php/urlblock.php?args=AAAAfQAAABAjFEC0HSM7xhfO~a53FMMaAAAAEILI_eaKvZQ2xBfgKEgDtwsAAABNAAAATRPNhqoqFgHJ0ggbKLKcdinR4UvnlhgAR4~YyrY4tAnroOFkE_IsHsOg9~RFPc7nEoj6YdiDgqZImAmb_xw9ZuFLvF91P2HzP5tlu1WX&url=http://142.250.4.103%2f
+Connecting to 142.250.4.103:6080... connected.
+HTTP request sent, awaiting response... 200 OK
+Length: 3248 (3.2K) [text/html]
+Saving to: ‘index.html’
+
+index.html                                           100%[===================================================================================================================>]   3.17K  --.-KB/s    in 0s
+
+2022-06-25 10:12:39 (332 MB/s) - ‘index.html’ saved [3248/3248]
+```
+
+Next, let's try to ban the traffic from this IP address. 
 
 ##### Drop packets source from one specific IP address
 
+As we mentioned above, multiple callback functions are allowed to be registered on the same Netfilter hook. So we will define the second hook function with a different priority. The logic of this hook function goes like this: we can get the source IP address from the IP headers and make the drop or accept decision according to it. The code goes as follows
 
-Define the hook function
+```c
+// In mini-firewall.c 
+#define IPADDRESS(addr) \
+	((unsigned char *)&addr)[3], \
+	((unsigned char *)&addr)[2], \
+	((unsigned char *)&addr)[1], \
+	((unsigned char *)&addr)[0]
 
-Register the hook function
+static char *ip_addr_rule = "142.250.4.103";
 
-Unregister the hook function
+static unsigned int nf_blockipaddr_handler(void *priv, struct sk_buff *skb, const struct nf_hook_state *state)
+{
+	if (!skb) {
+		return NF_ACCEPT;
+	} else {
+		char *str = (char *)kmalloc(16, GFP_KERNEL);
+		u32 sip;
+		struct sk_buff *sb = NULL;
+		struct iphdr *iph;
 
-Rule2: drop packets for an IP address
-ip_hdr
-ntohl: Big Endian vs Little Endian
-u32 type
-how IPADDRESS macro
+		sb = skb;
+		iph = ip_hdr(sb);
+		sip = ntohl(iph->saddr); // get source ip address; 
+		
+		sprintf(str, "%u.%u.%u.%u", IPADDRESS(sip)); // convert to standard IP address format
+		if(!strcmp(str, ip_addr_rule)) {
+			return NF_DROP;
+		} else {
+			return NF_ACCEPT;
+		}
+	}
+}
+```
 
-Rule1: drop all ICMP packets
+This hook function uses two interesting techniques:
+- `ntohl`: is a kernel function, which is used to convert the value from `network byte order` to `host byte order`. `Byte order` is related to the computer science concept of [`Endianness`](https://en.wikipedia.org/wiki/Endianness). Endianness defines the order or sequence of bytes of a word of digital data in computer memory. A `big-endian` system stores the most significant byte of a word at the smallest memory address.  A `little-endian` system, in contrast, stores the least-significant byte at the smallest address. Network protocol uses the `big-endian` system. But different OS and platforms run various Endianness system. So it may need such conversion based on the host machine.
+
+- `IPADDRESS`: is a macro, which generates the standard IP address format(four 8-bit fields separated by periods) from a 32-bit integer. It uses the technique of [`the equivalence of arrays and pointers in C`](https://www.eskimo.com/~scs/cclass/notes/sx10e.html). I will write another article to examine what it is and how it works. Please keep watching my updates!
+
+Next, we can register this hook function in the same way discussed above. The only remarkable point is this callback function should have a different priority as follows:
+
+```c
+static int __init nf_minifirewall_init(void) {
+	<-omit code->
+	nf_blockipaddr_ops = (struct nf_hook_ops*)kcalloc(1, sizeof(struct nf_hook_ops), GFP_KERNEL);
+	if (nf_blockipaddr_ops != NULL) {
+		nf_blockipaddr_ops->hook = (nf_hookfn*)nf_blockipaddr_handler;
+		nf_blockipaddr_ops->hooknum = NF_INET_PRE_ROUTING;  // register to the same hook
+		nf_blockipaddr_ops->pf = NFPROTO_IPV4;
+		nf_blockipaddr_ops->priority = NF_IP_PRI_FIRST + 1; // set a higher priority
+
+		nf_register_net_hook(&init_net, nf_blockipaddr_ops);
+	}
+	<-omit code->
+}
+```
+
+Let's see how it works with a demo. 
+##### Demo time
+
+After re-build and re-load the module, we can get: 
+
+```python
+chrisbao@CN0005DOU18129:~$ wget 142.250.4.103
+--2022-06-25 10:20:07--  http://142.250.4.103/
+Connecting to 142.250.4.103:80... failed: Connection timed out.
+Retrying.
+```
+
+The `wget 142.250.4.103` can't return response. Because it is dropped by our mini-firewall. Great!
+
+```python
+chrisbao@CN0005DOU18129:~$ dmesg | tail -n 5
+[ 3162.064284] Drop packet from 142.250.4.103
+[ 3166.089466] Drop packet from 142.250.4.103
+[ 3166.288603] Drop packet from 142.250.4.103
+[ 3174.345463] Drop packet from 142.250.4.103
+[ 3174.480123] Drop packet from 142.250.4.103
+```
+
+### More space to expand
+
+You can find the full code implementation [here](https://github.com/baoqger/linux-mini-firewall-netfilter/blob/main/mini_firewall.c). But I have to say, our mini-firewall only touches the surface of what Netfilter can provide. You can keep expanding the functionalities. For example, currently, the rules are hardcoded, why not make it possible to config the rules dynamically. There are many cool ideas worth trying. I leave it for the readers.  
+
+### Summary
+In this article, we implement the mini-firewall step by step and examined many detailed techniques. Not only code; but we also verify the behavior of the mini-firewall by running real demos.   
 
