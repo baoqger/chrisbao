@@ -3,6 +3,7 @@ menu:
   Home: /
   Archives: /archives
   About: /about
+  Project: /project
 rss: /atom.xml
 
 # Content
