@@ -12,11 +12,13 @@ Simply speaking, I want to sharpen my techniques in `network programming` and `L
 
 ### Acknowledgement 
 
-It's very lucky for me to come across this site ["Network programming in Linux"](http://tcpip.marcolavoie.ca/index.html), which developed a network packet capturing tool with `C++`. After confirming that the documents and source code on this site is very clear, I decided to refactor it with C language. That's the starting point for my project `cPacketSniffer`.      
+It's very lucky for me to come across this site ["Network programming in Linux"](http://tcpip.marcolavoie.ca/index.html), which developed a network packet capturing tool with `C++`. After confirming that the documents and source code on this site is completed and clear, I decided to refactor it with C language. That's the starting point for my project `cPacketSniffer`.      
 
 ### Features
 
 As a network packets sniffer, `cPacketSniffer` provides the following features: 
+
+<img src="/images/cPacketSniffer.png" title="cPacketSniffer modules" width="600px" height="400px">
 
 - Integrate with `libpcap` to support: filtering captured packets, capturing packets offline, capturing packets on specific devices and capturing packets in promiscuous mode.
 - Analyze network packets at low layers of TCP/IP stack, including `Ethernet`, `ARP`, `ICMP`, `IP(IPv4)`, `TCP`, `UDP`, etc. Also one protocol in the application layer: `TFTP`. 
@@ -27,6 +29,24 @@ As a network packets sniffer, `cPacketSniffer` provides the following features:
     - TCP session tracking and traffic analysis.
     - TFTP session tracking and traffic analysis.
 
+The following images demonstrate some typical usages of `cPacketSniffer`:  
+
+**Packet Analysis**:
+
+<img src="/images/packet-analysis.png" title="packet analysis" width="600px" height="400px">
+
+**ARP Spoofing Detection**:
+
+<img src="/images/arpspoof.png" title="arp spoofing detection" width="600px" height="400px">
+
+**PING Flood Detection**:
+
+<img src="/images/pingflooddetection.png" title="ping flood detection" width="600px" height="400px">
+
+**TCP Session Tracking**:
+
+<img src="/images/tcpsessiontrack.png" title="tcp session track" width="600px" height="400px">
+
 Besides the above network programming-related functionalities, it also covers the following points: 
 - Develop a generic data structure in C.
 - Error handling in C. 
@@ -34,7 +54,7 @@ Besides the above network programming-related functionalities, it also covers th
 - Manual memory management in C.
 - etc.
 
-This article will not cover these points in detail, I will write articles on these topics separately in the future. 
+This article will not cover these points in detail, I will write articles on these topics separately in the future. Please keep watching my blog!
 
 ### Future work
 
@@ -44,6 +64,7 @@ Now `cPacketSniffer` can work as a network packet sniffer based on the design. M
 - Improve the performance with advanced data structures, like binary search trees. 
 - Memory and cache performance tuning. 
 - Automatic memory management by Garbage Collection.
+- Integrate `ncurses` for Text-based user interface.
 
 
 
