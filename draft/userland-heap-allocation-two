@@ -1,0 +1,20 @@
+Process Memory Layout.
+Basic virtual memory introduction.
+Detailed Memory layout => source of various sections <== memory allocation at compile time(static allocation of memory) and runtime time(dynamic allocation of memory). => ELF file => loader
+*Consider multiple threads layout
+Userland memory allocation ==> Key
+    allocation memory in user space
+
+
+
+analysis based on malloc
+    various data structures: bins and chunks
+    通过例子反推实现点
+        alignment
+        P bit
+        big/little endian
+        gdb command
+        bins => 忽略细节 linked list to store freed chunks for reusing
+        bins的内容 => linked list 支持不连续内存单元
+        展示top section的变化 ==> 从零开始
+        展示 bins的变化 ==> free and reuse
