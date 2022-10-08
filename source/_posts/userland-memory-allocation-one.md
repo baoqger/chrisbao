@@ -1,6 +1,6 @@
 ---
 title: "Understand userland heap memory allocation: part one - overview"
-date: 2022-10-05 20:31:11
+date: 2022-08-05 20:31:11
 tags: Linux, memory layout, heap, stack
 ---
 
