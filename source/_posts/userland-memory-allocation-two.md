@@ -1,5 +1,5 @@
 ---
-title: "Understand userland heap memory allocation: part two - experiment"
+title: "Understand userland heap memory allocation: part two - allocate chunk"
 date: 2022-09-08 15:43:57
 tags: Linux, memory layout, heap, gdb
 ---
@@ -43,17 +43,17 @@ int main(int argc, char *argv[]) {
 ```
 The demo code above just allocates some memory, set the content of the memory and releases it later. And then allocate the other chunk of memory again. Very simple, all right? 
 
-First, set a `breakpoint` at line 7(the first `malloc` call) and run the program in `gdb`. Then run `vmmap` command from `pwndbg`, which can get the process memory layout shown in the last section: 
+First, set a `breakpoint` at line 7(the first `malloc` call) and run the program in `gdb`. Then run `vmmap` command from `pwndbg`, which can get the process memory layout as follows: 
 
 <img src="/images/heap-demo-vmmap-no-heap.png" title="pwndbg 1" width="800px" height="600px">
 
-Note that there is no `heap` segment yet before the first `malloc` call is made. After executing the `next` instruction in `gdb`, check the layout again: 
+Note that there is no `heap` segment yet before the first `malloc` call is made. After step over one line in `gdb`, check the layout again: 
 
 <img src="/images/heap-demo-vmmap-has-heap.png" title="pwndbg 2" width="800px" height="600px">
 
 Now the `heap` segment is created with the size of `132KB`(21000 in hexadecimal). As described above, the kernel maps 132KB of physical memory to this process's virtual memory and marks this 132KB block of physical memory as used to isolate other processes. This mapping routine is done via system calls like `brk`, `sbrk` and `mmap`. Please investigate these system calls yourself.
 
-132KB is much bigger than the 100B(the size passed to `malloc`). This behavior can answer one question at the beginning of this article. The system calls aren't necessary to be triggered each time when `malloc` is called. This is based on performance overhead consideration. Now the 132KB heap memory is maintained by the `allocator`. Next time the application calls `malloc` again, the `allocator` will allocate memory for it. 
+132KB is much bigger than the 100B(the size passed to `malloc`). This behavior can answer one question at the beginning of this article. The system calls aren't necessary to be triggered each time when `malloc` is called. This design is aimed to decrease performance overhead. Now the 132KB heap memory is maintained by the `allocator`. Next time the application calls `malloc` again, the `allocator` will allocate memory for it. 
 
 Next, step one more line in `gdb` to assign value("AAAABBBBCCCCDDDD") to the allocated block. Let's check the content of this 132KB heap segment with `heap` command as follows:
 
@@ -65,7 +65,7 @@ The `top` chunk contains all the remaining memories which have not been allocate
 
 Then let's look at the chunk with the size of 0x291. The `allocator` uses this chunk to store heap management structures. It is not important for our analysis, just skip it. 
 
-What we care about is the chunk in the middle with a size of `0x71`. It should be the block just allocated and contains the string "AAAABBBBCCCCDDDD". We can verify this point by checking its content:
+What we care about is the chunk in the middle with a size of `0x71`. It should be the block we requested and contains the string "AAAABBBBCCCCDDDD". We can verify this point by checking its content:
 
 <img src="/images/heap-demo-display.png" title="pwndbg 3" width="600px" height="400px">
 
@@ -120,14 +120,4 @@ According to this, let's review the content of this chunk again:
 
 I add marks on the image to help you understand. Let's do some simple calculations. `100 + 8 = 108`, 100 is the size of memory we requested, 8 is the size of metadata(for `size` field). Then `108` is aligned to `112` as a multiple of 8 bytes. Finally, since the special flag P is set to 1, then we get `112 + 1 = 113(0x71)`(that's the reason why the size is `0x71` instead of `0x70`).  
 
-analysis based on malloc
-    various data structures: bins and chunks
-    通过例子反推实现点
-        alignment
-        P bit
-        big/little endian
-        gdb command
-        bins => 忽略细节 linked list to store freed chunks for reusing
-        bins的内容 => linked list 支持不连续内存单元
-        展示top section的变化 ==> 从零开始
-        展示 bins的变化 ==> free and reuse
+In this section, we break into the heap segment and see how an allocated chunk works. Next, we'll check how to free a chunk. 
