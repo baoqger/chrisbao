@@ -38,11 +38,6 @@ int main(int argc, char *argv[]) {
     free(a);
     char *b = (char*)malloc(100);
     free(b);
-
-    void *c = malloc(1033);
-    void *d = malloc(1033);
-    free(c);
-    getchar();
     return 0;
 }
 ```
