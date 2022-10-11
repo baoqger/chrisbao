@@ -84,7 +84,11 @@ Next, I want to spend a little bit of time examining why we need `bins` and how 
 
 <img src="/images/naive-free-list.png" title="pwndbg 4" width="400px" height="300px">
 
-If the `allocator` keeps track of all the freed chunks in a linked list. It will take `O(N)` time for the allocator to find a freed chunk with fit size by traversing from the head to the tail. If the `allocator` wants to keep the chunks in order, then at least  `O(NlogN)` time is needed to sort the list by size. This slow allocation would have a bad impact on the overall performance of programs relying on the `glibc`. Next, let's see how bins optimize this process. 
+If the `allocator` keeps track of all the freed chunks in a linked list. It will take `O(N)` time for the allocator to find a freed chunk with fit size by traversing from the head to the tail. If the `allocator` wants to keep the chunks in order, then at least  `O(NlogN)` time is needed to sort the list by size. This slow allocation would have a bad impact on the overall performance of programs. Next, let's see how bins optimize this process. In summary, the optimization is done on the following three aspects:
+
+- High-performance data structure
+- fast-turnaround queue
+- per-thread cache without lock contention
 
 Among the 5 types of `bins`, `small bins` and `large bins` behave similarly. At the [code level](https://sourceware.org/git/gitweb.cgi?p=glibc.git;a=blob;f=malloc/malloc.c;h=6e766d11bc85b6480fa5c9f2a76559f8acf9deb5;hb=HEAD#l1686), they are defined as follows:
 
@@ -103,6 +107,8 @@ So they are an array of linked lists and each linked list(or bin) stores chunks 
 The `glibc` provides a [function](https://sourceware.org/git/gitweb.cgi?p=glibc.git;a=blob;f=malloc/malloc.c;h=6e766d11bc85b6480fa5c9f2a76559f8acf9deb5;hb=HEAD#l1686) to calculate the `index` of the corresponding small(or large) bin in the array based on the requested `size`. Since the `index` operation of the [array](https://en.wikipedia.org/wiki/Array_(data_structure)) is in `O(1)` time. Moreover, each bin contains chunks of the same size, so it can also take `O(1)` time to unlink the first chunk from the list. As a result, the entire allocation time is optimized to  `O(1)`. 
 
 The other types of bins all use a similar data structure to speed up the process, I will not show all of them here, please explore by yourself! 
+
+
 
 简单点儿
 
