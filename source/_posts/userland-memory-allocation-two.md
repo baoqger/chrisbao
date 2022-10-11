@@ -38,10 +38,15 @@ int main(int argc, char *argv[]) {
     free(a);
     char *b = (char*)malloc(100);
     free(b);
+
+    void *c = malloc(1033);
+    void *d = malloc(1033);
+    free(c);
+    getchar();
     return 0;
 }
 ```
-The demo code above just allocates some memory, set the content of the memory and releases it later. And then allocate the other chunk of memory again. Very simple, all right? 
+The demo code above just allocates some memory, set the content of the memory and releases it later. And then allocate other chunks of memory again. Very simple, all right? 
 
 First, set a `breakpoint` at line 7(the first `malloc` call) and run the program in `gdb`. Then run `vmmap` command from `pwndbg`, which can get the process memory layout as follows: 
 
@@ -111,13 +116,13 @@ The memory in between is reserved for the metadata mentioned above: `prev_size` 
 
 For the `size` field, it is worth noting: 
 - It includes both the size of metadata and the size of the actual user data.
-- It is usually aligned to a multiple of 8 bytes. You can investigate the [purpose of memory alignment](https://stackoverflow.com/questions/381244/purpose-of-memory-alignment) by yourself.
+- It is usually aligned to a multiple of 16 bytes. You can investigate the [purpose of memory alignment](https://stackoverflow.com/questions/381244/purpose-of-memory-alignment) by yourself.
 - It contains three special flags(`A|M|P`) at the three least significant bits. We can ignore the other two bits for now, but the last bit indicates whether the previous chunk is in use(set to 1) or not(set to 0). 
 
 According to this, let's review the content of this chunk again:
 
 <img src="/images/heap-demo-display-mark.png" title="pwndbg 3" width="600px" height="400px">
 
-I add marks on the image to help you understand. Let's do some simple calculations. `100 + 8 = 108`, 100 is the size of memory we requested, 8 is the size of metadata(for `size` field). Then `108` is aligned to `112` as a multiple of 8 bytes. Finally, since the special flag P is set to 1, then we get `112 + 1 = 113(0x71)`(that's the reason why the size is `0x71` instead of `0x70`).  
+I add marks on the image to help you understand. Let's do some simple calculations. `100 + 8 = 108`, 100 is the size of memory we requested, 8 is the size of metadata(for `size` field). Then `108` is aligned to `112` as a multiple of 16 bytes. Finally, since the special flag P is set to 1, then we get `112 + 1 = 113(0x71)`(that's the reason why the size is `0x71` instead of `0x70`).  
 
 In this section, we break into the heap segment and see how an allocated chunk works. Next, we'll check how to free a chunk. 
