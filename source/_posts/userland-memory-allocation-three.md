@@ -59,7 +59,7 @@ Now step over one line in `gdb` and check chunks in the heap as follows:
 
 <img src="/images/heap-demo-heap-free.png" title="pwndbg 1" width="300px" height="200px">
 
-You can see the changes: the allocated chunk is marked as a `Free chunk (tcache)` and pointer `fd` is set. 
+You can see the changes: the allocated chunk is marked as a `Free chunk (tcache)` and pointer `fd` is set(which indicates this freed chunk is inserted into a linked list). 
 
 The `tcache` is one kind of `bins` provided by `glibc`. The gdb `pwndbg` plugin allows you to check the content of `bins` by running command `bins` as follows:
 
@@ -67,7 +67,7 @@ The `tcache` is one kind of `bins` provided by `glibc`. The gdb `pwndbg` plugin 
 
 Note that the freed chunk(at 0x5555555592a0) is inserted into `tcache bins` as the liked list header.  
 
-Note that there 5 types of bins: `small bins`, `large bins`, `unsorted bins`, `fast bins` and `tcache bins`. I will examine them in the following section. 
+Note that there 5 types of bins: `small bins`, `large bins`, `unsorted bins`, `fast bins` and `tcache bins`. If you don't know, don't worry I will examine them in the following section. 
 
 According to the definition, after the second `malloc(100)` is called, the `allocator` should reuse the freed chunk in the `bins`. The following image can prove this:  
 
@@ -78,16 +78,14 @@ The freed chunk at 0x555555559290 is in use again and all `bins` are empty after
 
 Next, I want to spend a little bit of time examining why we need `bins` and how `bins` optimize chunk allocation and free. 
 
-<img src="/images/naive-free-list.png" title="pwndbg 4" width="400px" height="300px">
-
-If the `allocator` keeps track of all the freed chunks in a linked list as shown above. The time complexity is `O(N)` for the allocator to find a freed chunk with fit size by traversing from the head to the tail. If the `allocator` wants to keep the chunks in order, then at least  `O(NlogN)` time is needed to sort the list by size. This slow process would have a bad impact on the overall performance of programs. That's the reason why we need bins to optimize this process. In summary, the optimization is done on the following two aspects:
+If the `allocator` keeps track of all the freed chunks in a long linked list. The time complexity is `O(N)` for the allocator to find a freed chunk with fit size by traversing from the head to the tail. If the `allocator` wants to keep the chunks in order, then at least  `O(NlogN)` time is needed to sort the list by size. This slow process would have a bad impact on the overall performance of programs. That's the reason why we need bins to optimize this process. In summary, the optimization is done on the following two aspects:
 
 - High-performance data structure
-- per-thread cache without lock contention
+- Per-thread cache without lock contention
 
 #### High-performance data structure
 
-Take the [`small and large bins`](https://sourceware.org/git/gitweb.cgi?p=glibc.git;a=blob;f=malloc/malloc.c;h=6e766d11bc85b6480fa5c9f2a76559f8acf9deb5;hb=HEAD#l1686) as a reference, they are defined as follows:
+Take the `small bins` and [`large bins`](https://sourceware.org/git/gitweb.cgi?p=glibc.git;a=blob;f=malloc/malloc.c;h=6e766d11bc85b6480fa5c9f2a76559f8acf9deb5;hb=HEAD#l1686) as a reference, they are defined as follows:
 
 ```c
 #define NBINS             128
@@ -97,15 +95,19 @@ typedef struct malloc_chunk* mchunkptr;
 mchunkptr bins[NBINS * 2 - 2];
 ```
 
-You can see they are defined together in an array of linked lists and each linked list(or bin) stores chunks that are all the same fixed size. From `bins[2] to bins[63]` are the `small bins`, which track freed chunks less than 1024 bytes while the `large bins` are for bigger chunks.  `small bins` and `large bins` can be represented as a [`double-linked list`](https://en.wikipedia.org/wiki/Doubly_linked_list) shown below: 
+They are defined together in an array of linked lists and each linked list(or bin) stores chunks that are all `the same fixed size`. From `bins[2] to bins[63]` are the `small bins`, which track freed chunks less than 1024 bytes while the `large bins` are for bigger chunks.  `small bins` and `large bins` can be represented as a [`double-linked list`](https://en.wikipedia.org/wiki/Doubly_linked_list) shown below: 
 
 <img src="/images/small-bins-index.png" title="pwndbg 4" width="600px" height="400px">
 
 The `glibc` provides a [function](https://sourceware.org/git/gitweb.cgi?p=glibc.git;a=blob;f=malloc/malloc.c;h=6e766d11bc85b6480fa5c9f2a76559f8acf9deb5;hb=HEAD#l1686) to calculate the `index` of the corresponding small(or large) bin in the array based on the requested `size`. Since the `index` operation of the [array](https://en.wikipedia.org/wiki/Array_(data_structure)) is in `O(1)` time. Moreover, each bin contains chunks of the same size, so it can also take `O(1)` time to insert or remove one chunk into or from the list. As a result, the entire allocation time is optimized to  `O(1)`. 
 
-For `small bins` and `large bins`, if the neighbors of the current chunk are free, they are merged into a larger one. That's the reason we need a `double-linked list` to allow running fast traverse both forward and backward. 
+And `bins` are `LIFO(Last In First Out)` data structure. The insert and remove operations can be illustrated as follows: 
+ 
+<img src="/images/LIFO-linked-list.png" title="pwndbg 4" width="600px" height="400px">
 
-Unlike `small bins` and `large bins`, `fast bins` and `tcache bins` chunks are never merged with their neighbors. In practice, the glibc `allocator` doesn't set the `P` special flag at the start of the next chunk. This can avoid the overhead of merging chunks so that the freed chunk can be immediately reused if the same size chunk is requested. Moreover, since `fast bins` and `tcache bins` are never merged, they are implemented as a [`single-linked list`](https://sourceware.org/git/gitweb.cgi?p=glibc.git;a=blob;f=malloc/malloc.c;h=6e766d11bc85b6480fa5c9f2a76559f8acf9deb5;hb=HEAD#l1678).
+Moreover, for `small bins` and `large bins`, if the neighbors of the current chunk are free, they are `merged` into a larger one. That's the reason we need a `double-linked list` to allow running fast traverse both forward and backward. 
+
+Unlike `small bins` and `large bins`, `fast bins` and `tcache bins` chunks are `never merged` with their neighbors. In practice, the glibc `allocator` doesn't set the `P` special flag at the start of the next chunk. This can avoid the overhead of merging chunks so that the freed chunk can be immediately reused if the same size chunk is requested. Moreover, since `fast bins` and `tcache bins` are never merged, they are implemented as a [`single-linked list`](https://sourceware.org/git/gitweb.cgi?p=glibc.git;a=blob;f=malloc/malloc.c;h=6e766d11bc85b6480fa5c9f2a76559f8acf9deb5;hb=HEAD#l1678).
 
 This can be proved by running the second `free` method and checking the chunks in the heap as follows: 
 
