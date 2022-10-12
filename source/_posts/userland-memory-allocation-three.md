@@ -101,7 +101,7 @@ They are defined together in an array of linked lists and each linked list(or bi
 
 The `glibc` provides a [function](https://sourceware.org/git/gitweb.cgi?p=glibc.git;a=blob;f=malloc/malloc.c;h=6e766d11bc85b6480fa5c9f2a76559f8acf9deb5;hb=HEAD#l1686) to calculate the `index` of the corresponding small(or large) bin in the array based on the requested `size`. Since the `index` operation of the [array](https://en.wikipedia.org/wiki/Array_(data_structure)) is in `O(1)` time. Moreover, each bin contains chunks of the same size, so it can also take `O(1)` time to insert or remove one chunk into or from the list. As a result, the entire allocation time is optimized to  `O(1)`. 
 
-And `bins` are `LIFO(Last In First Out)` data structure. The insert and remove operations can be illustrated as follows: 
+`bins` are `LIFO(Last In First Out)` data structure. The insert and remove operations can be illustrated as follows: 
  
 <img src="/images/LIFO-linked-list.png" title="pwndbg 4" width="600px" height="400px">
 
@@ -109,8 +109,21 @@ Moreover, for `small bins` and `large bins`, if the neighbors of the current chu
 
 Unlike `small bins` and `large bins`, `fast bins` and `tcache bins` chunks are `never merged` with their neighbors. In practice, the glibc `allocator` doesn't set the `P` special flag at the start of the next chunk. This can avoid the overhead of merging chunks so that the freed chunk can be immediately reused if the same size chunk is requested. Moreover, since `fast bins` and `tcache bins` are never merged, they are implemented as a [`single-linked list`](https://sourceware.org/git/gitweb.cgi?p=glibc.git;a=blob;f=malloc/malloc.c;h=6e766d11bc85b6480fa5c9f2a76559f8acf9deb5;hb=HEAD#l1678).
 
-This can be proved by running the second `free` method and checking the chunks in the heap as follows: 
+This can be proved by running the second `free` method in the demo code and checking the chunks in the heap as follows: 
 
 <img src="/images/heap-demo-heap-free.png" title="pwndbg 1" width="300px" height="200px">
 
-First, the `top` chunk's size is still 0x20d01 rather than 0x20d00, which indicates the `P` bit is equal to 1. Second, the `Free chunk` only has one pointer: `fd`. If it's in a double-linked list, both `fd` and `bk` should point to a valid address. 
+First, the `top` chunk's size is still `0x20d01` rather than `0x20d00`, which indicates the `P` bit is equal to 1. Second, the `Free chunk` only has one pointer: `fd`. If it's in a double-linked list, both `fd` and `bk` should point to a valid address. 
+
+#### Per-thread cache without lock contention
+
+The letter `t` in `tcache bins` represents the `thread`, which is used to optimize the performance of multi-thread programs. In multi-thread programming, the most common way solution to prevent the [`race condition`](https://en.wikipedia.org/wiki/Race_condition) issue is using the [`lock or mutex`](https://en.wikipedia.org/wiki/Lock_(computer_science)). Similarly, The `glibc` maintains a `lock` in the data structure for each heap. But this design comes with a performance cost: [`lock contention`](https://en.wikipedia.org/wiki/Lock_(computer_science)#:~:text=lock%20contention%3A%20this%20occurs%20whenever,lock%20held%20by%20the%20other.), which happens when one thread attempts to acquire a lock held by another thread. This means the thread can't do any tasks. 
+
+`tcache bins` are per-thread bins. This means if the thread has a chunk on its `tcache bins`, it can serve the allocation without waiting for the heap lock!  
+
+### Summary
+
+In this article, we examined how the userland heap allocaor works by debugging into the heap memory with gdb. The discussion is fully based on the `glibc` implementation. The design and behavior of the `glibc` heap allocator are complex but interesting, what we covered here just touches the tip of the iceberg. You can explore more by yourself. 
+
+Moreover, I plan to write a simple version of a heap allocator for learning and teaching purpose. Please keep watching my blog!
+
