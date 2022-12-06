@@ -1,6 +1,6 @@
 ---
 title: "External Mergesort: part one"
-date: 2022-12-02 16:44:29
+date: 2022-11-02 16:44:29
 tags: algorithm, external, disk
 ---
 
