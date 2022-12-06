@@ -47,12 +47,12 @@ At the end of the sort phase, 8 temporary sorted 1-page runs will be created. Th
 
 ***Merge phase***: 
 
-The 8 sorted runs in pass 0 will be merged into a single sorted file in 3 more passes
+The 8 sorted runs in pass 0 will be merged into a single sorted file with 3 more passes.
 - pass 1: Perform 4 runs for the merge. 
-    - Run 1: Merge the first 2 small 1-page runs into a big 2-page run. This merging step goes as follows: 
-        - Read the first 2 sorted sub-files (one item from each file).
+    - Run 1: Merge the first two small 1-page runs into a big 2-page run. This merging step goes as follows: 
+        - Read the first two sorted sub-files (one item from each file).
         - Find the smaller item, output it in the new sub-file, and the appropriate input sub-file is advanced. Repeat this cycle until the input sub-file is completed. **This routine's logic is the same as the internal mergesort algorithm.**
-    - Run 2: Merge the next 2 1-page runs into a 2-page run. 
+    - Run 2: Merge the next two 1-page runs into a 2-page run. 
     - Run 3 and 4: follow the same process.   
     - At the end of ***pass 1***, 4 temporary sorted 2-page runs will be created. 
 - pass 2: Perform 2 runs for the merge. 
@@ -62,21 +62,10 @@ The 8 sorted runs in pass 0 will be merged into a single sorted file in 3 more p
 
 Note: the above process may seem complicated at the first sight, but the logic is nearly the same as the internal merge sort. The only difference is internal merging is based on memory buffers, while external merging is based on disk files, and needs reading the item from disk to memory.
 
-Since we keep merging two small sub-files into a big one with doubled size, the above algorithm can be called `two-way` external merge sorting. We generalize the idea to `multi-way` external merge sorting. 
+Since we keep merging two small sub-files into a big one with doubled size, the above algorithm can be called `two-way` external merge sorting. We can generalize the idea to `multi-way` external merge sorting, which merges M runs into one.  
 
-Next, let's analyze the complexity of it. Suppose the input file has `N` items and each page consists of `B` items. And `M` denotes the number of ways used in the merge phase, thus the number of passes should be: <b>log<sub>M</sub>(N/B) + 1</b>, where plus one means the first pass in the sort phase. And each pass, each item should be read and write once from and to the disk file. So the total number of disk I/O is: <b>2N*(log<sub>M</sub>(N/B) + 1)</b>
+Next, let's analyze its complexity. Suppose the input file has `N` items and each page consists of `B` items. And `M` denotes the number of ways used in the merge phase, thus the number of passes should be: <b>log<sub>M</sub>(N/B) + 1</b>, where plus one means the first pass in the sort phase. And each pass, each item is read and written once from and to the disk file. So the total number of disk I/O is: <b>2N*(log<sub>M</sub>(N/B) + 1)</b>
 
+### Summary
 
-outline
-
-background of external algorithm
-
-external sorting process 
-    two ways
-    multiple ways
-
-Implementation two-way
-
-implementation of multi-way
-
-Performance evalution
+In this article, we examined the abstract computational model of the external memory algorithm and analyzed the details of the external mergesort algorithm. Next article, let's implement the code and evaluate the performance. 
