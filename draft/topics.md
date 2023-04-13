@@ -13,4 +13,7 @@
 12 convert 32 bits integer to an ip address
 13 implementation of sizeof()
 14 josephus problem
-15 heap memory allocation
+15 heap memory allocation => Done. 
+16 how to understand linux kernel is monolithic => memory map tool
+17 self signed certficate
+18 what happens when you cancel a HTTP request
