@@ -1,12 +1,18 @@
 ---
-title: "Note on Red Black Tree: part one"
+title: "Understand Red Black Tree: part one - background"
 date: 2023-01-13 07:51:56
 tags: Algorithm, Data structure, Tree, Red Black Tree
 ---
 
 ### Introduction
 
-In this series of articles, I want to examine an important data structure: the [red-black tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree). I will cover the following topics:
+In this series of articles, I want to examine an important data structure: the [red-black tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree). The `red-black tree` is an advanced data structure that is difficult to fully understand. Maybe you have some wonders and confusion about it as follows:
+
+- What is the meaning of `red` and `black` here?
+- The `red-black tree` is known as a self-balancing binary search tree. But what's the difference between it and others? 
+- Where is it used or applied?  
+
+If you want to know the answer to the above questions, then this article is just for you. I will cover the following topics:
 
 - Why do we need the red-black tree and what is its advantage? 
 - How does a red-black tree work?
