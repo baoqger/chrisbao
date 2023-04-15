@@ -1,22 +1,22 @@
 ---
-title: "Note on Red Black Tree"
-date: 2023-03-13 07:51:56
+title: "Note on Red Black Tree: part one"
+date: 2023-01-13 07:51:56
 tags: Algorithm, Data structure, Tree, Red Black Tree
 ---
 
 ### Introduction
 
-In this article, I want to examine an important data structure: the [red-black tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree). I will cover the following topics:
+In this series of articles, I want to examine an important data structure: the [red-black tree](https://en.wikipedia.org/wiki/Red%E2%80%93black_tree). I will cover the following topics:
 
 - Why do we need the red-black tree and what is its advantage? 
 - How does a red-black tree work?
 - How to write a red-black tree from scratch? 
 
-### History of Red-Black Tree
+### Background of Red-Black Tree
 
 In this section, let's review the history of the red-black tree. During this process, I will show you why it was invented and what kind of advantages it can provide compared with other tree data structures. 
 
-First thing first, let's define the red-black tree as follow: 
+First thing first, let's define the red-black tree as follows: 
 
 - Red-Black Tree is a `self-balancing` `binary` `search` `tree`. 
 
@@ -38,7 +38,9 @@ This kind of `unbalanced BST` is degraded to a single linked list. So the BST ne
 
 - Self-Balancing Binary Search Tree: it's a binary search tree that automatically keeps its height small in the face of arbitrary item insertions and deletions. And the red-black tree is just one type of it. 
 
-tree这种数据结构如何分类?
+### Summary
 
-跟2-3-4的关系,跟avl tree的对比
+As the first post of this series, I examined the background of the red-black tree bit by bit. I hope you can understand what's self-balancing binary search tree and why we need it. In the next post, I will start to examine the behavior and property of the red-black tree. 
+
+
 
