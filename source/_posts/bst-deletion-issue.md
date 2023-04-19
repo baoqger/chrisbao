@@ -24,14 +24,32 @@ If the node is a `leaf`, then it can be deleted immediately. For example, to del
 
 I will show you how to implement it at the code level later, which summarizes all the cases. 
 
-If the node has only `one child subtree`, the node can be deleted after we reset its parent's pointer to bypass the node and point to its child node. For example, to delete node `4`: 
+If the node has only `one child subtree`, the node can be deleted after we reset its parent's pointer to bypass the node and point to its child node. For example, to delete node `4` as follows: 
 
 <img src="/images/onechild-node-deletion.png" title="Delete leaf node from binary search tree" width="400px" height="500px">
 
-分为三种情况讨论：0 child node, 1 child node, 2 child nodes
+In the above example, node `4` has only one left child node `3`. Let's consider the symmetric scenario, imagine what will happen when it has only one right child node. The answer is it doesn't influence how we handle the deleted node here and the result is the same. I will not draw the diagram here and leave it for you to explore. 
+
+The complicated case is how to deal with a node with `two children`. Before we introduce the solution, let's clarify one concept about the binary search tree: `successor`: 
+
+- Successor: is the node with the `minimum` value in the `right` subtree of any node.
+
+
+<img src="/images/twochildren-delete-origin.png" title="Delete leaf node from binary search tree" width="200px" height="300px">
+
+Let's take node `16` in the above binary search tree as an example, the `successor` is node `17`. All right! Based on this concept, the solution to delete a node with two children is straightforward:
+
+- Replace the data of the node with the value of the `successor` and recursively delete the `successor` from the `right` subtree. 
+
+Let's try to analyze this solution. Firstly, replacing the data of the node with the value of the `successor` can keep the `binary search` property after the deletion operation. Secondly, since the `successor` has the minimum value of the subtree, which means it cannot have a left child. So the `successor` is either a leaf node without any child node or a node with only one right child node. So recursively deleting the `successor` can be resolved by the two simple cases we discussed above, it's perfect, right?  For instance, deletion of node `16` goes as follows: 
+
+<img src="/images/twochildren-delete-after.png" title="Delete leaf node from binary search tree" width="500px" height="600px">
+
+
+
 
 show real code
 
-讨论：两种方法：predecessor和successor
+讨论：两种方法：predecessor 可行吗？
 
 延申：unbalanced，performance degradation, self-balanceing BST
