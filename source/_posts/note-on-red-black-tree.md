@@ -1,6 +1,6 @@
 ---
 title: "Understand Red Black Tree: part one - background"
-date: 2023-01-13 07:51:56
+date: 2023-02-13 07:51:56
 tags: Algorithm, Data structure, Tree, Red Black Tree
 ---
 
