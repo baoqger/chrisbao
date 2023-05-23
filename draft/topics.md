@@ -24,5 +24,5 @@
 23 mongodb schema design 
 24 graphql implementation in C# 
 25 Dynamically create GraphQL type with Reflection in c#
-26 Amazon Prime architecture refactor analysis
+26 event driven architecture based on rabbitmq
 
