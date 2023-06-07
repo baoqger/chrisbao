@@ -70,13 +70,18 @@ In the future, I will write an article for actor model to examine more details a
 
 提纲:
 
-service fabric vs k8s, 简单带过
+结合项目介绍: 各个service都是什么, 为什么选择了对应的service 类型
 
-focus on development part, 不包含deployment
+技术细节介绍with code
 
-理论讲解: programming model: stateless, stateful, actor. 都要介绍下
+: create actor with RPC
+: HTTP request
+: partitions and replicas of stateful service
+: reliable collections of stateful services
 
-结合项目介绍: 细致分析
+延展讨论:
+
+sf vs k8s 
 
 服务通信: RPC, message passing, async of message broker(event-driven application), internal DNS
 
