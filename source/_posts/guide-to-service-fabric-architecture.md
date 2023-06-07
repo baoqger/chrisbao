@@ -38,6 +38,31 @@ Next, let's examine what is `Reliable Services`?
 
 ### Reliable Services
 
+As I mentioned above, `service fabric` is an `orchestrator` which provides infrastructure-level functionalities like `cluster management`, `service discovery`, and `scaling` as `Kubernetes` does. But `service fabric` goes further by also providing a `reliable services` model to guide the development on the application level, this's a special point compared to `Kubernetes`. Simply speaking, the application code can call the `service fabric` runtime APIs to query the system for building reliable applications. In the following sections, I'll show you what that means with some code blocks. 
+
+`Reliable Services` can be classified into two types as follows: 
+
+- Stateless service: when we mentioned stateless service in the context of service fabric, we are not saying that the service doesn't have any state to store, but it means that the service doesn't store the data inside the cluster of service fabric. Indeed, the stateless service can store states in the external database. The naming of stateless is relative to the cluster. 
+- Stateful service: similarly, the stateful service keeps its state locally in the service fabric cluster, which means the data and service are in the same virtual or physical machine. And this is called `Reliable Collections`. Compared with external data storage, `Reliable Collections` implies low latency and high performance. In the following section, I will introduce more about `Reliable Collections`, which is a very interesting topic. Please hold on!
+
+<img src="/images/reliable-services.png" title="reliable services" width="600px" height="400px">
+
+Besides stateless and stateful services listed above, there is the third type of service provided by Service Fabric: `Actor Service`. 
+
+- Actor Service: is a special type of stateful service, which applies the `actor model` theory. The [`actor model`](https://en.wikipedia.org/wiki/Actor_model) is a general computer science theory handling `concurrent computation`. It is a very big topic worthy of a separate article. I'll not cover the details in this post, instead, let's go through this model in the context of service fabric. 
+
+The `actor model` is proposed many years ago in 1973 to simplify the process of writing concurrent programs with the following several advantages: 
+
+- Encapsulation: in the actor model, each actor is a self-contained unit that encapsulates its own state and behavior. And each actor runs `only one thread`, so you don't have to worry about complex multi-threading programming issues. But how does it support high concurrency? Just allocate `more actor instances` as the load goes up.   
+- Message passing: different from the traditional multi-threading programming techniques, actors do not `share memories`, instead, they communicate with async message-passing communication, which can reduce the complexity of concurrent programs. 
+- Location transparency: as a self-contained computation unit, each actor can be located on different machines, which makes it the perfect solution for building distributed applications as service fabric does. 
+
+In the future, I will write an article for actor model to examine more details about it. Next, let's take a look at the demo app: [HealthMetrics](https://github.com/baoqger/service-fabric-dotnet-data-aggregation) and analyze how it was build bsaed on the programming models we discussed above. 
+
+<img src="/images/actor-model.png" title="actor model" width="400px" height="300px">  
+
+### Architecture of HealthMetrics
+
 <img src="/images/healthmetrics-architecture.png" title="architecture" width="800px" height="600px">
 
 
@@ -56,6 +81,11 @@ focus on development part, 不包含deployment
 服务通信: RPC, message passing, async of message broker(event-driven application), internal DNS
 
 scalability and availability:  instance(actor service), partition(county service) and replicas
+
+cloud native advantages
+
+explore the techniques under the hood: NAT, simulated annealing, Paxos consensus algorithm 
+
 
 
 展开讨论: 

@@ -25,4 +25,6 @@
 24 graphql implementation in C# 
 25 Dynamically create GraphQL type with Reflection in c#
 26 event driven architecture based on rabbitmq
+27 service fabric deep technology: simulated annealing, Paxos consensus algorithm, the distributed hash table, how to compute the partition id with hash function. 
+28 use https://github.com/steven-tey/dub  as example to show how to create a complete vercel app.
 
