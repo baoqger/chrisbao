@@ -65,34 +65,15 @@ In the future, I will write an article for actor model to examine more details a
 
 <img src="/images/healthmetrics-architecture.png" title="architecture" width="800px" height="600px">
 
+There are several services included in this `HealthMetrics` demo application. They are: 
 
+- BandCreationService: this `stateless` service read the input CSV file and creates the individual `band actors` and `doctor actors`. For example, as the above snapshot shows, the application creates roughly 300 band actors and doctor actors.  
+- BandActor: this `actor` service is the host for the band actors. Each BandActor represents an individual wearable device, which generates heart rate data and then sends it to the designated DoctorActor every 5 seconds. 
+- DoctorActor: the doctor `actor` service aggregates all of the data it receives from each band actor and generates an overall view for that doctor and then pushes it into the CountyService every 5 seconds.
+- CountyService: this `stateful` service aggregates the information provided by the doctor actor further and also pushes the data into the NationalService. 
+- NationalService: this `stateful` service maintains the total aggerated data for the entire county and is used to serve data requested by WebService. 
+- WebService: this `stateless` service just hosts a simple web API to query information from NationalService and render the data on the web UI. 
 
+As you can see, this demo application consists of all three types of services provided by service fabric. 
 
-提纲:
-
-结合项目介绍: 各个service都是什么, 为什么选择了对应的service 类型
-
-技术细节介绍with code
-
-: create actor with RPC
-: HTTP request
-: partitions and replicas of stateful service
-: reliable collections of stateful services
-
-延展讨论:
-
-sf vs k8s 
-
-服务通信: RPC, message passing, async of message broker(event-driven application), internal DNS
-
-scalability and availability:  instance(actor service), partition(county service) and replicas
-
-cloud native advantages
-
-explore the techniques under the hood: NAT, simulated annealing, Paxos consensus algorithm 
-
-
-
-展开讨论: 
-
-service fabric的问题, service mesh的优势
+In the next section, let's examine what kinds of techniques of service fabric are applied to build this highly `scalable` and `available` microservices application. 
