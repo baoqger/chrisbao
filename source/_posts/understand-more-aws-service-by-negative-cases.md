@@ -8,7 +8,7 @@ tags: Scalability, AWS
 ### Background
 Recently, the engineering team at Amazon Prime Video posted an article that becomes super popular in the software community. Many discussions arose concerning `how to design a scalable application in the modern cloud computing era`.  
 
-`Scalability` is one critical metric for designing and developing an online application. Technically it is a challenging task, but the cloud made it easy; because the public cloud services providers like AWS and Azure do the job for you. [`Virtual machine`](https://www.cloudflare.com/learning/cloud/what-is-a-virtual-machine/), [`Container`](https://en.wikipedia.org/wiki/Container) and [`Serverless`](https://en.wikipedia.org/wiki/Serverless_computing), you have so many powerful technologies to scale your application and business.  
+`Scalability` is one critical metric for designing and developing an online application. Technically it is a challenging task, but the cloud made it easy; because the public cloud services providers like AWS and Azure do the job for you. [`Virtual machine`](https://www.cloudflare.com/learning/cloud/what-is-a-virtual-machine/), [`Container`](https://en.wikipedia.org/wiki/Container) , and [`Serverless`](https://en.wikipedia.org/wiki/Serverless_computing), you have so many powerful technologies to scale your application and business.  
 
 But the problem is you need to choose the one suitable for your application. So in this article, let's examine the details of why Aamzon refactors the application and how they do it.
 
@@ -44,7 +44,7 @@ As a software engineer working in a team, maybe you can just focus on writing gr
 
 ##### AWS S3 Buckets Tier-1 requests
 
-As mentioned above, the `media converter` service splits videos into frames, and the `defect detector` service loads and analyzes the frames later. So in the original architect, the frame images are stored in the Amazon S3 bucket. As the [original post](https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90) mentioned "Defect detectors then download images and processed it concurrently using AWS Lambda. However, **the high number of Tier-1 calls** to the S3 bucket was expensive."
+As mentioned above, the `media converter` service splits videos into frames, and the `defect detector` service loads and analyzes the frames later. So in the original architect, the frame images are stored in the Amazon S3 bucket. As the [original post](https://www.primevideotech.com/video-streaming/scaling-up-the-prime-video-audio-video-monitoring-service-and-reducing-costs-by-90) mentioned "Defect detectors then download images and processed them concurrently using AWS Lambda. However, **the high number of Tier-1 calls** to the S3 bucket was expensive."
 
 So the second bottleneck is also a cost issue. But what is a `Tier-1 call` or request in the context of AWS S3? 
 

@@ -4,11 +4,13 @@
 
 技术细节介绍with code
 
-: communication perspective:  create actor with RPC and HTTP request
-: naming perspective
-: replication perspective: 
-: partitions and replicas of stateful service
-: reliable collections of stateful services
+communication perspective:  create actor with RPC and HTTP request + message broker for async communication + EDA 
+
+naming perspective: consul for service register and discovery
+
+reliability and availability perspective: reliable collections and replications
+
+scalability perspective: partition
 
 延展讨论:
 

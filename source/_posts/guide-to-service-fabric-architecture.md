@@ -1,6 +1,6 @@
 ---
 title: "Build Microservices with Service Fabric: A Hands-on Approach"
-date: 2023-03-19 18:18:32
+date: 2023-03-20 18:18:32
 tags: Service Fabric, stateless, stateful, actor model, scalability, reliability,  partition
 ---
 
@@ -14,7 +14,7 @@ I know what you're thinking about, at the time of writing, `Kubernetes` already 
 
 - Firstly, I once used `Service Fabric` to build microservices and learned something valuable about it. I want to summarize all my learnings and share them with you here! 
 - Secondly, we can (simply) examine both `Service Fabric` and `Kubernetes` to understand why the cloud-native solution is better and what problems it can solve. 
-- Finally, `Service Fabric` is still widely used in some enterprise applications, in detail, you can refer [here](https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-application-scenarios). So the skills you learned about service fabric is valuable. 
+- Finally, `Service Fabric` is still widely used in some enterprise applications, in detail, you can refer [here](https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-application-scenarios). So the skills you learned about service fabric are valuable. 
 
 ### Hands-on Project
 
@@ -34,7 +34,7 @@ Before we explore the detailed implementation, you can pause here for a few minu
 - Containers: service fabric can also deploy services in containers. But if you choose to use containers, why not directly use `Kubernetes`? I'll not cover it in this post. 
 - Guest executables: You can run any type of code or script like Node.js as guest executables in the service fabric. Note that the service fabric platform doesn't include the runtime for the guest executables, instead, the operating system hosting the service fabric must provide the corresponding runtime for the given language. It provides a flexible way to run legacy applications within microservices. If you have an interest in it, please refer to this [article](https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-guest-executables-introduction), I will not examine the details in this post.
 
-Next, let's examine what is `Reliable Services`? 
+Next, let's examine what are `Reliable Services`.
 
 ### Reliable Services
 
@@ -57,7 +57,7 @@ The `actor model` is proposed many years ago in 1973 to simplify the process of 
 - Message passing: different from the traditional multi-threading programming techniques, actors do not `share memories`, instead, they communicate with async message-passing communication, which can reduce the complexity of concurrent programs. 
 - Location transparency: as a self-contained computation unit, each actor can be located on different machines, which makes it the perfect solution for building distributed applications as service fabric does. 
 
-In the future, I will write an article for actor model to examine more details about it. Next, let's take a look at the demo app: [HealthMetrics](https://github.com/baoqger/service-fabric-dotnet-data-aggregation) and analyze how it was build bsaed on the programming models we discussed above. 
+In the future, I will write an article on the actor model to examine more details about it. Next, let's take a look at the demo app: [HealthMetrics](https://github.com/baoqger/service-fabric-dotnet-data-aggregation) and analyze how it was built based on the programming models we discussed above. 
 
 <img src="/images/actor-model.png" title="actor model" width="400px" height="300px">  
 
@@ -74,6 +74,52 @@ There are several services included in this `HealthMetrics` demo application. Th
 - NationalService: this `stateful` service maintains the total aggerated data for the entire county and is used to serve data requested by WebService. 
 - WebService: this `stateless` service just hosts a simple web API to query information from NationalService and render the data on the web UI. 
 
-As you can see, this demo application consists of all three types of services provided by service fabric. 
+As you can see, this demo application consists of all three types of services provided by service fabric, which is a perfect case to learn `service fabric`, right? 
 
-In the next section, let's examine what kinds of techniques of service fabric are applied to build this highly `scalable` and `available` microservices application. 
+In the next section, let's examine what kinds of techniques of service fabric are applied to build this highly `scalable` and `available` microservices application. I will focus on several critical perspectives of building `distributed system `: `naming perspective`, `communication perspective`, `reliability and availability perspective` ,and `scalability perspective`.
+
+### Naming Perspective
+
+`Naming` plays an important role in the `distributed system`. They are used to share resources, to uniquely identify entities, to refer to locations, and so on. In the `distributed system`, each name should be resolved to the entity it refers to. To resolve names, it is necessary to implement a `naming system`.
+
+In `Service Fabric`, `naming` is used to identify and locate `services` and `actors` within a cluster. And `Service Fabric` uses a `structured naming` system, where services and actors are identified using a `hierarchical` naming scheme. The naming system is based on the concept of a `namespace`. A namespace is a logical grouping of related `applications` and `services`. In the `Service Fabric` namespace, the first level is the `application`, which represents a logical grouping of services, and the second level is the `service`, which represents a specific unit of functionality that is part of the application. And the default namespace is `fabric:/`, so the service [URI](https://en.wikipedia.org/wiki/Uniform_Resource_Identifier) in the `Service Fabric` cluster is in the following format: 
+
+```shell
+fabric:/applicationName/ServiceName
+```
+And in our `HealthMetrics` demo app, the URL will be something like `fabric:/HealthMetrics/HealthMetrics.BandActor` or `fabric:/HealthMetrics/HealthMetrics.CountyService`(the application name is `HealthMetrics` and the service name is `HealthMetrics.BandActor` or `HealthMetrics.CountyService`). 
+
+In this demo app, we build a helper class `ServiceUriBuilder` to generate URI as follows: 
+
+```csharp
+public Uri ToUri()
+{
+    string applicationInstance = this.ApplicationInstance;
+
+    if (String.IsNullOrEmpty(applicationInstance))
+    {
+        try
+        {
+            // the ApplicationName property here automatically prepends "fabric:/" for us
+            applicationInstance = FabricRuntime.GetActivationContext().ApplicationName.Replace("fabric:/", String.Empty);
+        }
+        catch (InvalidOperationException)
+        {
+            // FabricRuntime is not available. 
+            // This indicates that this is being called from somewhere outside the Service Fabric cluster.
+        }
+    }
+
+    return new Uri("fabric:/" + applicationInstance + "/" + this.ServiceInstance);
+}
+```
+
+For detail, please refer to this source code [file](https://github.com/baoqger/service-fabric-dotnet-data-aggregation/blob/master/HealthMetrics.Common/ServiceUriBuilder.cs).
+
+Since the behavior of the name resolver is quite similar to the internet domain name resolver, the `Service Fabric Name Service` can be regarded as an internal [`DNS`](https://en.wikipedia.org/wiki/Domain_Name_System) service. This type of internal `DNS` service is a common requirement for all distributed systems, including `Kubernetes`. In the modern `cloud-native` ecosystem, the popular choice is [`CoreDNS`](https://coredns.io/), which runs inside K8S. In the future, I will write an article about DNS. Please keep watching my blog's update.
+
+Besides this default `DNS` solution mentioned above, you can use other `service registry` and `service discovery` solutions. For example, in my [previous article](https://organicprogrammer.com/2020/11/16/golang-service-discovery-consul/), I once examined how to do this based on [`Consul`](https://www.consul.io/). Imagine your large-scale application consists of hundreds of microservices, with the default DNS solutions you have to hardcode so many names in each service. That's just where `Consul` can help. In detail, I'll not repeat it here, please refer to my previous article!
+
+Now that we understand how the naming system works, let's examine how to do inter-service communication based on that. 
+
+### Communication Perspective
