@@ -76,7 +76,9 @@ There are several services included in this `HealthMetrics` demo application. Th
 
 As you can see, this demo application consists of all three types of services provided by service fabric, which is a perfect case to learn `service fabric`, right? 
 
-In the next section, let's examine what kinds of techniques of service fabric are applied to build this highly `scalable` and `available` microservices application. I will focus on several critical perspectives of building `distributed system `: `naming perspective`, `communication perspective`, `reliability and availability perspective` ,and `scalability perspective`.
+In the next sections, let's examine what kinds of techniques of service fabric are applied to build this highly `scalable` and `available` microservices application. 
+
+
 
 ### Naming Perspective
 
@@ -123,3 +125,143 @@ Besides this default `DNS` solution mentioned above, you can use other `service 
 Now that we understand how the naming system works, let's examine how to do inter-service communication based on that. 
 
 ### Communication Perspective
+
+Inter-service communication is at the heart of all distributed systems. For nondistributed platforms, communication between processes can be done by `sharing memories`. But the communication between processes on different machines has always been based on the low-level message passing as offered by the underlying `network`. There are two widely used models for communications in distributed systems: `Remote Procedure Call(RPC)` and `Message-Oriented Middleware(MOM)`. 
+
+- `Remote Procedure Call(RPC)`: is ideal for `client-server` applications and aims at hiding message-passing details from the client. The `HTTP` protocol is a typical `client-server` model, so `HTTP` requests can be thought of as a type of `RPC`.  In the `client-server` model, the client and server `must be online at the same time` to `exchange` information, so it's often called `synchronous communication`.  
+
+- `Message-Oriented Middleware(MOM)`: is suitable for distributed applications, where the communication does not follow the strict pattern of a client-server model. In this model, there are three parties involved: the `message producer`, the `message consumer`, and the `message broker`. In this case, when the `message producer` publishes the message, the `message consumer` doesn't have to be online, the `message broker` will store the message until the consumer becomes available to receive it, so this model is also called `asynchronous communication`.
+
+The `Service Fabric` supports `RPC` out of the box. In our `HealthMetrics` demo app, you can find the `RPC` calls and HTTP requests easily. For example, when the `BandActor` and the `DoctorActor` are created, the `RPC` call is used in the [`BandCreationService`](https://github.com/baoqger/service-fabric-dotnet-data-aggregation/blob/master/HealthMetrics.BandCreationService/Service.cs#L86) as follows: 
+
+```csharp
+private async Task CreateBandActorTask(BandActorGenerator bag, CancellationToken cancellationToken)
+{
+    // omit some code for simplicity
+    ActorId bandActorId;
+    ActorId doctorActorId;
+    bandActorId = new ActorId(Guid.NewGuid()); 
+    doctorActorId = new ActorId(bandActorInfo.DoctorId);
+    IDoctorActor docActor = ActorProxy.Create<IDoctorActor>(doctorActorId, this.DoctorServiceUri);
+    await docActor.NewAsync(doctorName, randomCountyRecord);
+    IBandActor bandActor = ActorProxy.Create<IBandActor>(bandActorId, this.ActorServiceUri);
+    await bandActor.NewAsync(bandActorInfo);
+    // omit some code for simplicity
+}
+```
+
+You can see the `ActorProxy` instance is created as the `RPC` client, and the `NewAsync` method of `BandActor` and `DoctorActor` service is called. For example, the [`NewAsync`](https://github.com/baoqger/service-fabric-dotnet-data-aggregation/blob/master/HealthMetrics.BandActor/BandActor.cs#L78) method of `BandActor` goes like this: 
+
+```csharp
+public async Task NewAsync(BandInfo info)
+{
+    await this.StateManager.SetStateAsync<CountyRecord>("CountyInfo", info.CountyInfo);
+    await this.StateManager.SetStateAsync<Guid>("DoctorId", info.DoctorId);
+    await this.StateManager.SetStateAsync<HealthIndex>("HealthIndex", info.HealthIndex);
+    await this.StateManager.SetStateAsync<string>("PatientName", info.PersonName);
+    await this.StateManager.SetStateAsync<List<HeartRateRecord>>("HeartRateRecords", new List<HeartRateRecord>()); // initially the heart rate records are empty list
+    await this.RegisterReminders();
+
+    ActorEventSource.Current.ActorMessage(this, "Band created. ID: {0}, Name: {1}, Doctor ID: {2}", this.Id, info.PersonName, info.DoctorId);
+}
+```
+
+You can ignore the detailed content of this method for now, I will explain in a later section.
+
+And when the `DoctorActor` service reports its status, it calls the `CountyService` endpoint with HTTP requests: 
+
+```csharp 
+public async Task SendHealthReportToCountyAsync()
+{
+    // omit some code
+    await servicePartitionClient.InvokeWithRetryAsync(
+        client =>
+        {
+            Uri serviceAddress = new Uri(
+                client.BaseAddress,
+                string.Format(
+                    "county/health/{0}/{1}",
+                    partitionKey.Value.ToString(),
+                    id));
+
+            HttpWebRequest request = WebRequest.CreateHttp(serviceAddress);
+            request.Method = "POST";
+            request.ContentType = "application/json";
+            request.KeepAlive = false;
+            request.Timeout = (int) client.OperationTimeout.TotalMilliseconds;
+            request.ReadWriteTimeout = (int) client.ReadWriteTimeout.TotalMilliseconds;
+
+            using (Stream requestStream = request.GetRequestStream())
+            {
+                using (BufferedStream buffer = new BufferedStream(requestStream))
+                {
+                    using (StreamWriter writer = new StreamWriter(buffer))
+                    {
+                        JsonSerializer serializer = new JsonSerializer();
+                        serializer.Serialize(writer, payload);
+                        buffer.Flush();
+                    }
+
+                    using (HttpWebResponse response = (HttpWebResponse) request.GetResponse())
+                    {
+                        ActorEventSource.Current.Message("Doctor Sent Data to County: {0}", serviceAddress);
+                        return Task.FromResult(true);
+                    }
+                }
+            }
+        }
+    );
+    // omit some code
+}
+```
+
+In the demo app, no `asynchronous communication` is used. But you can easily integrate the `message broker` middleware with the `Service Fabric`. This kind of microservice design is called `Event-Driven Architecture`. In the future, I will write another article about it, please keep watching my blog!
+
+### Scalability Perspective
+
+`Scalability` has become one of the most important design goals for developers of distributed systems. A system can be scalable, meaning that we can easily add more users and resources to the system without any noticeable loss of performance. In most cases, scalability problems in distributed systems appear as performance problems caused by the limited capacity of servers and networks. 
+
+Simply speaking, there are two types of scaling techniques: `scaling up` and `scaling out`: 
+
+- scaling up: is the process by which a machine is equipped with more and often more powerful resources(e.g., by increasing memory, upgrading CPUs, or replacing network modules) so that it can better accommodate performance-demanding applications. However, there are limits to how much you can scale up a single machine, and at some point, it may become more cost-effective to scale out. 
+- scaling out: is all about extending a networked computer system with more computers and subsequently distributing workloads across the extended set of computers. There are basically only three techniques we can apply: `asynchronous communication`, `replication` and `Partitioning`. 
+
+We already examined asynchronous communication in the last section. Next, let's take a deep look at the other two: 
+
+- `Replication`:  is a technique, which `replicates` more components or resources, etc., across a distributed system. `Replication` not only increases `availability`; but also helps to balance the load between components, leading to `better performance`. In Service Fabric, no matter whether it is a stateless or stateful service, you can replicate the service across multiple nodes. As the workload of your application increases, Service Fabric will automatically distribute the load. But `replication` can only boost performance for `read` requests (which don't change data); if you need to optimize the performance for `write` requests (which change data), you need `Partitioning`. 
+
+- `Partitioning`:  is an important scaling technique, which involves taking a component or other resource, splitting it into `smaller parts`, and subsequently spreading those parts across the system. Each partition only contains a subset of the entire dataset. This can help reduce the amount of data that needs to be processed and accessed by each partition,  which can lead to faster processing times and improved performance. In addition to reducing the size of the data set, partitioning can also improve concurrency and reduce contention.
+
+In Service Fabric, each `partition` consists of a `replica set` with a single `primary` replica and multiple active `secondary` replicas. Service Fabric makes sure to distribute replicas of partitions across nodes so that secondary replicas of a partition do not end up on the same node as the primary replica, which can increase the `availability`. 
+
+<img src="/images/partition-replication.png" title="partition and replicas" width="600px" height="400px"> 
+
+The difference between a `primary` replica and a `secondary` replica is that the `primary` replica can handle both `read and write` requests, while the `secondary` replica can only handle `read` requests. Moreover, by default, the read requests are only handled by the `primary` replica, if you want to balance the read requests among all the `secondary` replicas, you need to set [`ListenOnSecondary`](https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-reliable-services-lifecycle) at the application code level. You can set the number of replicas with [`MinReplicaSetSize`](https://github.com/baoqger/service-fabric-dotnet-data-aggregation/blob/master/HealthMetricsApplication/Scripts/HealthMetricsDeployment.ps1#L155) and [`TargetReplicaSetSize`](https://github.com/baoqger/service-fabric-dotnet-data-aggregation/blob/master/HealthMetricsApplication/Scripts/HealthMetricsDeployment.ps1#L158)
+
+And when the client needs to call the service with multiple partitions, the client needs to generate a `ServicePartitionKey`; and send requests to the service with this partition key. For example, the `DoctorActor` sends the health report to the county service with multiple partitions as follows: 
+
+```csharp
+public async Task SendHealthReportToCountyAsync() {
+    // omit some code 
+    ServicePartitionKey partitionKey = new ServicePartitionKey(countyRecord.CountyId);
+    ServicePartitionClient<HttpCommunicationClient> servicePartitionClient =
+    new ServicePartitionClient<HttpCommunicationClient>(
+        this.clientFactory,
+        this.countyServiceInstanceUri,
+        partitionKey);
+    await servicePartitionClient.InvokeWithRetryAsync();
+    // omit some code
+}
+```
+
+You can see the partition key is generated based on the county id field. Service Fabric provides several different [partition schemas](https://learn.microsoft.com/en-us/azure/service-fabric/service-fabric-concepts-partitioning). In this case, `ranged partitioning` is used, where the partition key is an `integer`. 
+
+The county service specifies an integer range by a [`Low Key`](https://github.com/baoqger/service-fabric-dotnet-data-aggregation/blob/master/HealthMetricsApplication/Scripts/HealthMetricsDeployment.ps1#L34) ( set to 0) and [`High Key`](https://github.com/baoqger/service-fabric-dotnet-data-aggregation/blob/master/HealthMetricsApplication/Scripts/HealthMetricsDeployment.ps1#L35) (set to 57000). It also defines the number of partitions as [`PartitionCount`](https://github.com/baoqger/service-fabric-dotnet-data-aggregation/blob/master/HealthMetricsApplication/Scripts/HealthMetricsDeployment.ps1#L61) (set to 3). All the integer keys are evenly distributed among the partitions. So the partitions of the county service go as follows: 
+
+<img src="/images/partition-key.png" title="partition key" width="400px" height="300px"> 
+
+As I mentioned above, the county id is unique, we could then generate a hash code based on the id field, then modulus the key range, to finally get the partition key. Service Fabric runtime will direct the requests to the target node based on that partition key. 
+
+### Summary
+
+In this post, we quickly examined some interesting topics about Service Fabric. I have to admit that Service Fabric is a big project, what I examined here only covers a small portion of the entire system. Feel free to explore more!

@@ -10,7 +10,13 @@ naming perspective: consul for service register and discovery
 
 reliability and availability perspective: reliable collections and replications
 
+state 的价值: the state of a distributed system should be saved to allow recovery to that state later on. 
+
+statemanager两个接口的差别
+
 scalability perspective: partition
+
+fault tolerance => SF-ring, DHT
 
 延展讨论:
 
@@ -24,7 +30,7 @@ cloud native advantages
 
 explore the techniques under the hood: NAT, simulated annealing, Paxos consensus algorithm 
 
-
+service fabric cluster deployment: vmss + load balancer
 
 展开讨论: 
 
