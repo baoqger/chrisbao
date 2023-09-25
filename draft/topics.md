@@ -28,4 +28,7 @@
 27 service fabric deep technology: simulated annealing, Paxos consensus algorithm, the distributed hash table, how to compute the partition id with hash function. 
 28 use https://github.com/steven-tey/dub  as example to show how to create a complete vercel app.
 29 full time open source maintainer career path
-30 amqp and http2 common points
+30 amqp and http2 common points: multiplex tcp connection
+31 Prim algorithm based on priority queue
+32 book review: design pattern, advanced algorithm and data structure
+
