@@ -2,9 +2,10 @@
 menu:
   Home: /
   Archives: /archives
-  About: /about
   Project: /project
   Book Review: /book-reviews
+  Solopreneur: /solopreneur
+  About: /about
 rss: /atom.xml
 
 # Content
