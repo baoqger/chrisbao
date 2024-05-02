@@ -16,3 +16,8 @@ When I want to learn how Docker works behind the scenes, I searched a lot online
  **Advanced Algorithms and Data Structures** by Marcello La Rocca
 
  This is an algorithm book that I will definitely read repeatedly in the future! Compared to other classic algorithm books, it is much less academic. You won't find many complex formulas and derivations, but rather, you will see many illustrative diagrams that help you understand. Pay attention to the word 'advanced' in the book title, which means that the book discusses high-level data structures and algorithms. I believe that very few people would frequently use data structures like Bloom filters, which are discussed in the book, in their daily work. However, reading this book will make you aware that there are indeed people in your industry using such advanced technology, which is awe-inspiring.
+
+ **Foundations of Scalable Systems: Designing Distributed Architectures** by Ian Gorton
+
+ Designing scalable distributed systems is a crucial skill for senior software engineers. Nowadays, interviews for such positions often include a focus on this skill, known as a `system design interview`. And this book can provide a solid foundation for excelling in these interviews. 
+I highly recommend every chapter of this book to the readers. various layers of a scalable distributed system, including the underlying network protocol, distributed databases, distributed caching, message brokers, microservices, serverless architectures, and more. All of these topics can greatly deepen your understanding of the scalable distributed system. Of course, if you want to fully absorb the contents, multiple readings of the book may be necessary. 

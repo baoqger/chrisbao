@@ -30,8 +30,11 @@
 29 full time open source maintainer career path
 30 amqp and http2 common points: multiplex tcp connection
 31 Prim algorithm based on priority queue
-32 book review: foundations of scalable system; mongodb in action; grokking deep learning
+32 book review: foundations of scalable system; mongodb in action; grokking deep learning; start small, stay small
 33 add email subscription to my blog; SEO optimization of my blog; add visitor map to my blog
 34 google analytics and google adsense to hexo
-
-
+35 ABAC
+36 Shopify app development
+37 wide column database
+38 Probabilistic Programming: https://learn.microsoft.com/en-us/archive/msdn-magazine/2019/january/net-machine-learning-through-probabilistic-programming
+39: RL, unity ml agent
