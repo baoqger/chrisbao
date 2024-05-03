@@ -35,6 +35,8 @@
 34 google analytics and google adsense to hexo
 35 ABAC
 36 Shopify app development
+36.1 oauth 2
 37 wide column database
 38 Probabilistic Programming: https://learn.microsoft.com/en-us/archive/msdn-magazine/2019/january/net-machine-learning-through-probabilistic-programming
 39: RL, unity ml agent
+40 nosql database 4 categories
