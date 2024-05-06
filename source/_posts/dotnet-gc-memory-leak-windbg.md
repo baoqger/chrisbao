@@ -191,7 +191,6 @@ You can notice that there are `3639` objects of type `System.Reflection.Emit.Dyn
 This is the potential reason for the memory leak problem. [`System.Reflection.Emit`](System.Reflection.Emit) is a low-level library used to generate the Microsoft Intermediate Language (MSIL) dynamically, my application does not rely on it. Finally, it turns out the issue is from the Service Fabric SDK and upgrading to new versions can fix it. 
 
 
-### Background
-
+### Summary
 In this article, we examined how .NET GC works and how to diagnose the memory leak issue with WinDbg. 
 
