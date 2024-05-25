@@ -1,0 +1,45 @@
+concurrency 对于scalability的重要性: Amdahl法则
+Scalability的核心是: 可以通过简单的增加计算资源, 来提升系统的性能. 
+计算资源可以分为多个层面: 单机的资源和分布式集群资源. 从单机到分布式, 这是自然而然的演化过程. 
+而如果讨论单机的资源, 并发和多线程编程就是极其重要的话题了, 如何充分高效并合理的利用多核处理器资源, 
+是系统设计过程中必须考虑的因素.
+
+
+thread pool pattern在concurrency的作用
+
+.net task vs thread
+
+.net threadpool performance tuning
+
+real world case
+
+这是一个大话题, 要连续发系列medium文章才行
+
+
+1. concurrency对于scalability的意义, thread pool的价值, task和thread pool的关系, .net clr threadpool的用法
+2.  The size of thread pool in theory(java).  
+    tuning thread pool(java).
+    https://www.infoq.com/articles/Java-Thread-Pool-Performance-Tuning/
+    https://dip-mazumder.medium.com/how-to-determine-java-thread-pool-size-a-comprehensive-guide-4f73a4758273
+    https://www.javaadvent.com/2015/12/the-importance-of-tuning-your-thread-pools.html
+    https://engineering.zalando.com/posts/2019/04/how-to-set-an-ideal-thread-pool-size.html
+
+    .net: tuning the size is dangerous
+    https://learn.microsoft.com/en-us/archive/msdn-magazine/2008/december/clr-inside-out-thread-management-in-the-clr
+    setminthreads to performance issue (https://ayende.com/blog/179203/production-postmortem-30-boost-with-a-single-line-change)
+
+3. .net thread pool under the hood: hill climbing and singal processing, work stealing
+https://learn.microsoft.com/en-us/archive/msdn-magazine/2010/september/concurrency-throttling-concurrency-in-the-clr-4-0-threadpool
+https://learn.microsoft.com/en-us/archive/msdn-magazine/2008/december/clr-inside-out-thread-management-in-the-clr
+https://learn.microsoft.com/en-us/archive/msdn-magazine/2007/october/parallel-performance-optimize-managed-code-for-multi-core-machines
+https://learn.microsoft.com/en-us/archive/msdn-magazine/2008/october/paradigm-shift-design-considerations-for-parallel-programming
+https://learn.microsoft.com/en-us/archive/msdn-magazine/2006/september/clr-inside-out-using-concurrency-for-scalability
+https://learn.microsoft.com/en-us/archive/msdn-magazine/2008/october/concurrency-hazards-solving-problems-in-your-multithreaded-code
+https://github.com/baoqger/HillClimbing
+https://mattwarren.org/2017/04/13/The-CLR-Thread-Pool-Thread-Injection-Algorithm/
+
+
+4. write a simple thread pool based on Joe's article. 
+https://joeduffyblog.com/2008/07/29/building-a-custom-thread-pool-series-part-1/
+https://github.com/amibar/SmartThreadPool
+
