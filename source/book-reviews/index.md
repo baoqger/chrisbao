@@ -21,3 +21,8 @@ When I want to learn how Docker works behind the scenes, I searched a lot online
 
  Designing scalable distributed systems is a crucial skill for senior software engineers. Nowadays, interviews for such positions often include a focus on this skill, known as a `system design interview`. And this book can provide a solid foundation for excelling in these interviews. 
 I highly recommend every chapter of this book to the readers. various layers of a scalable distributed system, including the underlying network protocol, distributed databases, distributed caching, message brokers, microservices, serverless architectures, and more. All of these topics can greatly deepen your understanding of the scalable distributed system. Of course, if you want to fully absorb the contents, multiple readings of the book may be necessary. 
+
+
+ **Grokking Concurrency** by Kirill Bobrov
+
+ One of the standout features of "Grokking Concurrency" by Kirill Bobrov is its explanation of how concurrent programming operates in a universal context, transcending the confines of any specific programming language. This broad approach not only enhances comprehension but also underscores the fundamental principles underlying concurrent programming, making it applicable across diverse programming environments. On completing this book, I gain a comprehensive understanding of the intricacies of concurrency, parallelism, multithreading, and asynchronous programming.

@@ -74,7 +74,7 @@ https://learn.microsoft.com/zh-tw/archive/msdn-magazine/2008/june/tools-and-tech
 ~~~~
 The importance of concurrency programming
 
-To develop scalable applications, various solutions exist that can be classified into distributed computing, leveraging horizontal scaling by adding more computational resources. While these distributed solutions are crucial for scalability, it's important to note that concurrent programming, a technique used to enhance the performance of single-machine programs, plays a critical role in developing scalable applications.
+To develop scalable applications, various fancy solutions exist that can be classified into distributed computing, leveraging horizontal scaling by adding more computational resources. While these distributed solutions are crucial for scalability, it's important to note that concurrent programming, a technique used to enhance the performance of single-machine programs, plays a critical role in developing scalable applications.
 
 
 
