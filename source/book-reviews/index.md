@@ -26,3 +26,11 @@ I highly recommend every chapter of this book to the readers. various layers of 
  **Grokking Concurrency** by Kirill Bobrov
 
  One of the standout features of "Grokking Concurrency" by Kirill Bobrov is its explanation of how concurrent programming operates in a universal context, transcending the confines of any specific programming language. This broad approach not only enhances comprehension but also underscores the fundamental principles underlying concurrent programming, making it applicable across diverse programming environments. On completing this book, I gain a comprehensive understanding of the intricacies of concurrency, parallelism, multithreading, and asynchronous programming.
+
+ **Start Small, Stay Small: A Developer's Guide to Launching a Startup** by Rob Walling
+
+This book has been on my radar for quite some time, and despite its publication approximately 10 years ago, its content remains incredibly relevant. It effectively addresses two crucial questions: why developers transition into self-funded startup entrepreneurship, and more importantly, how to navigate this shift successfully.
+
+ `While it is true there are always new technologies to learn, as you mature in your technology career it's likely you will begin to feel like a hamster on a wheel as you learn one more way to pull data out of a database`. Superficial learning of this kind is insufficient for long-term career security. The book reinforced my belief in the need to leverage my software engineering skills to establish and own a business.
+
+The book then provides a comprehensive framework for actualizing this goal. It emphasizes that as a software engineer, technical and coding skills contribute to less than 30% of the overall objective. Instead, one must learn how to identify a viable market, effectively market their product, and manage their time efficiently. It underscores the potential necessity of delegating tasks, even including aspects of coding to achieve success!  
