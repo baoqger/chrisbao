@@ -188,7 +188,7 @@ Total 4442 objects
 
 You can notice that there are `3639` objects of type `System.Reflection.Emit.DynamicResolver`. As we know, the objects in the `finalizer queue` can't be removed until the finalizer runs. This also means that any object they reference and any object referenced by those, and so on has to be kept in memory.
 
-This is the potential reason for the memory leak problem. [`System.Reflection.Emit`](System.Reflection.Emit) is a low-level library used to generate the Microsoft Intermediate Language (MSIL) dynamically, my application does not rely on it. Finally, it turns out the issue is from the Service Fabric SDK and upgrading to new versions can fix it. 
+This is the potential reason for the memory leak problem. [`System.Reflection.Emit`](https://learn.microsoft.com/en-us/dotnet/api/system.reflection.emit?view=net-8.0) is a low-level library used to generate the Microsoft Intermediate Language (MSIL) dynamically, my application does not rely on it. Finally, it turns out the issue is from the Service Fabric SDK and upgrading to new versions can fix it. 
 
 
 ### Summary
