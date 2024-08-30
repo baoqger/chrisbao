@@ -2,6 +2,7 @@
 title: Golang inter Goroutine communication - shared memory or channels 
 date: 2020-10-26 10:29:32
 tags: golang, concurrent, shared memory, message pass
+keywords: golang, concurrent, shared memory, message pass
 ---
 
 ## Introduction

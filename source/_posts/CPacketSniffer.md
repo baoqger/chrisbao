@@ -2,6 +2,7 @@
 title: cPacketSniffer
 date: 2022-07-22 10:19:48
 tags: network packet capture, libpcap, analyze and track network traffics, detect network security attacks, Linux system programming
+keywords: network packet capture, libpcap, analyze and track network traffics, detect network security attacks, Linux system programming
 ---
 
 ### Background

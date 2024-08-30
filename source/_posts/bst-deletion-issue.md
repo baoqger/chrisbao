@@ -2,6 +2,7 @@
 title: "Deletion operation in Binary Search Tree: successor or predecessor"
 date: 2023-01-01 12:10:04
 tags: Binary Search Tree, delete, balanced, performance
+keywords: Binary Search Tree, delete, balanced, performance
 ---
 
 ### Introduction

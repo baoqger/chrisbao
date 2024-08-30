@@ -2,6 +2,7 @@
 title: Golang bytes.Buffer and bufio
 date: 2021-04-04 17:50:14
 tags: Golang, bufio, bytes, buffer
+keywords: Golang, bufio, bytes, buffer
 ---
 
 ### Background

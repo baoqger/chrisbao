@@ -2,6 +2,7 @@
 title: algo-part2
 date: 2020-04-11 21:00:20
 tags:
+keywords: algorithm interview
 ---
 
 ## Part 2

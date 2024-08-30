@@ -2,6 +2,7 @@
 title: "External Mergesort: part one"
 date: 2022-11-02 16:44:29
 tags: algorithm, external, disk
+keywords: algorithm, external, disk
 ---
 
 ### Introduction
