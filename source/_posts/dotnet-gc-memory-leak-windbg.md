@@ -2,6 +2,7 @@
 title: "Diagnose Memory Leaks in .NET Applications with WinDbg: A Hands-on Approach"
 date: 2024-05-01 10:43:54
 tags: dotnet, GC, memory leak, WinDbg
+keywords: dotnet, GC, memory leak, WinDbg
 ---
 
 ### Introduction
