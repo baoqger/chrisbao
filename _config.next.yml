@@ -1,0 +1,45 @@
+# Alternate NexT config (merged with theme defaults)
+# https://theme-next.js.org/docs/getting-started/configuration
+
+scheme: Gemini
+
+darkmode: true
+
+menu:
+  home: / || fa fa-home
+  archives: /archives/ || fa fa-archive
+  project: /project/ || fa fa-folder-open
+  "Book Review": /book-reviews/ || fa fa-book
+  solopreneur: /solopreneur/ || fa fa-briefcase
+  about: /about/ || fa fa-user
+  rss: /atom.xml || fa fa-rss
+
+menu_settings:
+  icons: true
+  badges: false
+
+sidebar:
+  position: right
+  display: post
+
+toc:
+  enable: true
+  number: true
+
+creative_commons:
+  license: by-nc-sa
+  sidebar: false
+  post: false
+
+# Math via hexo-math ({% katex %} in posts)
+math:
+  every_page: false
+  mathjax:
+    enable: false
+  katex:
+    enable: false
+
+fancybox: true
+
+custom_file_path:
+  style: source/_data/styles.styl

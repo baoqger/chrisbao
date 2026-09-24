@@ -1,0 +1,12 @@
+// Preserve image aspect ratio in posts (matches old Landscape theme behavior).
+// Many articles use <img width="..." height="..."> with incorrect aspect ratios;
+// without height: auto the browser stretches images to both dimensions.
+.post-body {
+  img {
+    max-width: 100%;
+    height: auto !important;
+    display: block;
+    margin-left: auto;
+    margin-right: auto;
+  }
+}
