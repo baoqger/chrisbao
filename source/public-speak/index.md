@@ -3,7 +3,7 @@ title: Public Speak
 date: 2026-09-24 12:00:00
 ---
 
-Talks and public speaking engagements.
+Talks and public speaking: 
 
 ### [Improving AI Agent Tool-Calling Accuracy Through Model Fine-Tuning on Microsoft Foundry](https://developer.microsoft.com/en-us/reactor/events/26686/)
 

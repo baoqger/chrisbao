@@ -8,6 +8,7 @@
     "deploy": "hexo deploy",
     "deploy:site": "hexo clean && hexo generate && hexo deploy",
     "server": "hexo server",
+    "dev": "hexo server -o",
     "new": "hexo new"
   },
   "hexo": {
@@ -15,6 +16,7 @@
   },
   "dependencies": {
     "hexo": "^8.1.2",
+    "hexo-browsersync": "^0.3.0",
     "hexo-deployer-git": "^4.0.0",
     "hexo-generator-archive": "^2.0.0",
     "hexo-generator-category": "^2.0.0",

@@ -94,6 +94,16 @@ ignore:
 ## Themes: https://hexo.io/themes/
 theme: next
 
+# Local dev server (hexo server / npm run server)
+# hexo-server watches files and regenerates; hexo-browsersync reloads the browser.
+server:
+  cache: false
+  port: 4000
+
+browsersync:
+  notify: false
+  open: false
+
 # Deployment
 ## Docs: https://hexo.io/docs/deployment.html
 deploy:

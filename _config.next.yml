@@ -11,7 +11,7 @@ menu:
   Project: /project/ || fa fa-folder-open
   "Book Review": /book-reviews/ || fa fa-book
   "Public Speak": /public-speak/ || fa fa-microphone
-  solopreneur: /solopreneur/ || fa fa-briefcase
+  Training: /training/ || fa fa-graduation-cap
   about: /about/ || fa fa-user
   rss: /atom.xml || fa fa-rss
 
