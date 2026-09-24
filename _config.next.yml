@@ -8,8 +8,9 @@ darkmode: true
 menu:
   home: / || fa fa-home
   archives: /archives/ || fa fa-archive
-  project: /project/ || fa fa-folder-open
+  Project: /project/ || fa fa-folder-open
   "Book Review": /book-reviews/ || fa fa-book
+  "Public Speak": /public-speak/ || fa fa-microphone
   solopreneur: /solopreneur/ || fa fa-briefcase
   about: /about/ || fa fa-user
   rss: /atom.xml || fa fa-rss
