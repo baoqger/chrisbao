@@ -78,6 +78,10 @@ npm run new -- "Post title"
 # or: hexo new "Post title"
 ```
 
+### Publishing from Obsidian
+
+To convert an OrgPro vault note into a Hexo post (images, structure, and code preserved; About the Author removed), use the **obsidian2hexo** Cursor skill: [.cursor/skills/obsidian2hexo/SKILL.md](.cursor/skills/obsidian2hexo/SKILL.md).
+
 New page (e.g. under `source/my-page/index.md`):
 
 ```bash
