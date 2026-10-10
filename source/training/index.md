@@ -13,7 +13,7 @@ Gapu Technology (Beijing) Co., Ltd. provides training and consulting in AI, clou
 
 ### Instructor
 
-Chris Bao is a Microsoft Certified Trainer specializing in AI, Azure, GitHub Copilot, and security. He holds multiple related certifications, including AI-102, AI-103, AI-300, AZ-204, GH-300, and others.
+Chris Bao is a Microsoft Certified Trainer specializing in AI, Azure, GitHub Copilot, and security. He holds multiple related certifications, including AI-102, AI-103, AI-300, AI-500, AZ-204, GH-300, and others.
 
 He has delivered many public technical talks in the industry, sharing research and hands-on practice in AI, software engineering, coding agents, cloud computing, and security. See the [Public Speak](/public-speak/) page for selected sessions.
 
