@@ -15,7 +15,7 @@ npm install
 
 ## Run locally (dev server)
 
-Watches files, regenerates on change, and reloads the browser (via `hexo-browsersync`).
+Watches files and regenerates on change (`hexo-server`). Refresh the browser manually after edits.
 
 ```bash
 npm run server
