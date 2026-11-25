@@ -1,0 +1,38 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [master]
+    paths:
+      - 'source/**'
+      - '_config.yml'
+      - '_config.next.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - '.github/workflows/**'
+  workflow_dispatch:
+
+concurrency:
+  group: pages-deploy
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm ci
+      - run: npm run clean && npm run build
+      - name: Verify custom domain file
+        run: test -f public/CNAME
+      - uses: peaceiris/actions-gh-pages@v4
+        with:
+          deploy_key: ${{ secrets.DEPLOY_KEY }}
+          external_repository: baoqger/baoqger.github.io
+          publish_branch: master
+          publish_dir: ./public
+          commit_message: 'chore: deploy from chrisbao@${{ github.sha }}'

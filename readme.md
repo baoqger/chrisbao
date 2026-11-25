@@ -53,7 +53,25 @@ npm run clean && npm run build
 
 ## Deploy to GitHub Pages
 
-Published site repo: `https://github.com/baoqger/baoqger.github.io.git` (branch `master`), configured in `_config.yml`.
+Published site repo: `https://github.com/baoqger/baoqger.github.io.git` (branch `master`), configured in `_config.yml`. The live site uses custom domain `organicprogrammer.com` via [`source/CNAME`](source/CNAME).
+
+### Automated (GitHub Actions)
+
+Workflow: [`.github/workflows/deploy-pages.yml`](.github/workflows/deploy-pages.yml)
+
+- **On push** to `master` when paths under `source/`, site or theme config, `package.json` / lockfile, or the workflow file change.
+- **Manual:** GitHub → **chrisbao** → **Actions** → **Deploy to GitHub Pages** → **Run workflow**.
+
+The job runs `npm ci`, `hexo clean`, `hexo generate`, then publishes `public/` to `baoqger/baoqger.github.io` with [peaceiris/actions-gh-pages](https://github.com/peaceiris/actions-gh-pages).
+
+**One-time setup:**
+
+1. Generate a dedicated ed25519 SSH key pair (no passphrase).
+2. **`baoqger/baoqger.github.io`** → Settings → Deploy keys → add the **public** key → enable **Allow write access**.
+3. **`baoqger/chrisbao`** → Settings → Secrets and variables → Actions → secret **`DEPLOY_KEY`** = full **private** key.
+4. Confirm Pages on `baoqger.github.io` still serves branch **`master`** / root with custom domain **organicprogrammer.com**.
+
+### Manual (local)
 
 Recommended (clean, generate, then deploy):
 
@@ -67,7 +85,7 @@ Deploy only (uses existing `public/`; run `build` first if needed):
 npm run deploy
 ```
 
-You need permission to push to `baoqger.github.io`. Use HTTPS with a personal access token or SSH as configured in Git.
+You need permission to push to `baoqger.github.io`. Use HTTPS with a personal access token or SSH as configured in Git. Local deploy remains useful if Actions is unavailable.
 
 ## Create content
 
